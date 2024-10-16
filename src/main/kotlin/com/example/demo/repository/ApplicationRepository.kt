@@ -7,7 +7,7 @@ import org.springframework.web.reactive.function.client.WebClient
 import org.json.JSONObject
 
 @Repository
-class ApplicationRepository(private val webClient: WebClient.Builder, private val repository: VacancyRepository, private val userRepository: UserRepository) {
+class ApplicationRepository(private val webClient: WebClient.Builder, private val repository: VacancyRepository, private val hhOAuthRepository: HHOAuthRepository) {
 
     @Value("\${refreshtoken.url}")
     private val refreshTokenUrl: String = ""
@@ -26,7 +26,8 @@ class ApplicationRepository(private val webClient: WebClient.Builder, private va
 
     fun applyToVacancy(vacancyId: String, resumeId: String): String? {
         val apiUrl = "https://api.hh.ru/negotiations?vacancy_id=$vacancyId&resume_id=$resumeId"
-        val accessToken = userRepository.findByName("macygabr")?.access_token ?: return null
+
+        val accessToken = hhOAuthRepository.findByUserId(1L)?.access_token ?: return null
         return webClient.build()
             .post()
             .uri(apiUrl)
@@ -38,7 +39,7 @@ class ApplicationRepository(private val webClient: WebClient.Builder, private va
     }
 
     fun getVacancies(): List<VacancyDTO> {
-        val accessToken = userRepository.findByName("macygabr")?.access_token ?: return emptyList()
+        val accessToken = hhOAuthRepository.findByUserId(1L)?.access_token ?: return emptyList()
         return repository.getVacancies(accessToken, contentType)
     }
 

@@ -5,6 +5,7 @@ import com.example.demo.repository.ApplicationRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -19,23 +20,21 @@ class VacancyService(private val repository: ApplicationRepository) {
 
     private var started = false
     private val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
-
-    fun getVacancies(): List<VacancyDTO> {
-        return repository.getVacancies()
-    }
-
+    private val executorService: ExecutorService = Executors.newSingleThreadExecutor()
 
     fun startMonitoringVacancies() {
         if (!started) {
             started = true
             println("Запуск мониторинга вакансий...")
-            monitorVacancies()
-            scheduler.scheduleAtFixedRate(
-                { monitorVacancies() },
-                1000,
-                1,
-                TimeUnit.DAYS
-            )
+            executorService.submit {
+                monitorVacancies()
+                scheduler.scheduleAtFixedRate(
+                    { monitorVacancies() },
+                    1000,
+                    1,
+                    TimeUnit.DAYS
+                )
+            }
         } else {
             println("Мониторинг уже запущен.")
         }

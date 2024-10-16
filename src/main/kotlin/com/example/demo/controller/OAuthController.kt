@@ -1,6 +1,6 @@
 package com.example.demo.controller
 
-import com.example.demo.repository.UserRepository
+import com.example.demo.repository.HHOAuthRepository
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -12,7 +12,7 @@ import org.springframework.web.reactive.function.BodyInserters
 
 @RestController
 class OAuthController(
-    private val userRepository: UserRepository
+    private val hhOAuthRepository: HHOAuthRepository
 ) {
 
     @Value("\${client.id}")
@@ -26,16 +26,13 @@ class OAuthController(
 
     @GetMapping("/callback")
     fun callback(@RequestParam("code") code: String): String {
-
         val tokenResponse = getAccessToken(clientId, clientSecret, code, redirectUri)
-
-        val user = userRepository.findByName("macygabr")
-        if (user != null && tokenResponse != null) {
-            user.access_token = tokenResponse.accessToken
-            user.refresh_token = tokenResponse.refreshToken
-            userRepository.save(user)
+        val hhOAuth = hhOAuthRepository.findByUserId(1L)
+        if (hhOAuth != null && tokenResponse != null) {
+            hhOAuth.access_token = tokenResponse.accessToken
+            hhOAuth.refresh_token = tokenResponse.refreshToken
+            hhOAuthRepository.save(hhOAuth)
         }
-
         return "Готов начать, перейди на /start_monitoring"
     }
 
@@ -48,14 +45,6 @@ class OAuthController(
         val webClient = WebClient.builder()
             .baseUrl("https://hh.ru/oauth")
             .build()
-
-        val body = mapOf(
-            "grant_type" to "authorization_code",
-            "client_id" to clientId,
-            "client_secret" to clientSecret,
-            "code" to authorizationCode,
-            "redirect_uri" to redirectUri
-        )
 
         val responseBody = webClient.post()
             .uri("/token")
