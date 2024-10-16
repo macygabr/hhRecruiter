@@ -21,6 +21,11 @@ class HomeController(private val vacancyService: VacancyService) {
         return "https://hh.ru/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUrl}"
     }
 
+    @GetMapping("/oauht_url")
+    fun getOAuthURL(): String {
+        return "https://hh.ru/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUrl}"
+    }
+
     @GetMapping("/start_monitoring")
     fun vacancy(): String {
         vacancyService.startMonitoringVacancies()

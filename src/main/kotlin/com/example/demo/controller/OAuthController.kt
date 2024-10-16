@@ -1,6 +1,7 @@
 package com.example.demo.controller
 
 import com.example.demo.repository.HHOAuthRepository
+import com.example.demo.service.VacancyService
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -8,11 +9,14 @@ import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.http.MediaType
 import org.json.JSONObject
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.web.reactive.function.BodyInserters
 
 @RestController
 class OAuthController(
-    private val hhOAuthRepository: HHOAuthRepository
+    private val hhOAuthRepository: HHOAuthRepository,
+    private val vacancyService: VacancyService
 ) {
 
     @Value("\${client.id}")
@@ -25,15 +29,19 @@ class OAuthController(
     private val redirectUri: String = ""
 
     @GetMapping("/callback")
-    fun callback(@RequestParam("code") code: String): String {
+    fun callback(@RequestParam("code") code: String): ResponseEntity<String> {
         val tokenResponse = getAccessToken(clientId, clientSecret, code, redirectUri)
         val hhOAuth = hhOAuthRepository.findByUserId(1L)
-        if (hhOAuth != null && tokenResponse != null) {
+
+        return if (hhOAuth != null && tokenResponse != null) {
             hhOAuth.access_token = tokenResponse.accessToken
             hhOAuth.refresh_token = tokenResponse.refreshToken
             hhOAuthRepository.save(hhOAuth)
+            vacancyService.startMonitoringVacancies()
+            ResponseEntity("", HttpStatus.OK)
+        } else {
+            ResponseEntity("", HttpStatus.BAD_REQUEST)
         }
-        return "Готов начать, перейди на /start_monitoring"
     }
 
     fun getAccessToken(
