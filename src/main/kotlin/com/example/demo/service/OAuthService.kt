@@ -1,12 +1,14 @@
 package com.example.demo.service
 
 import com.example.demo.repository.HHOAuthRepository
+import org.json.JSONException
 import org.json.JSONObject
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
+import reactor.core.publisher.Mono
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
@@ -48,34 +50,44 @@ class OAuthService (
         hhOAuthRepository.save(hhOAuth)
     }
     fun refreshAccessToken() {
-        println("Запуск обновения токена...")
-
+        println("Запуск обновления токена...")
         val hhOAuth = hhOAuthRepository.findByToken("1")
-        val refreshToken = hhOAuth.refresh_token
 
-        scheduledTask = hhOAuth.expiresIn?.let {
+        val refreshToken = hhOAuth.refresh_token
+        scheduledTask = hhOAuth.expiresIn?.let { expiresIn ->
             scheduler.scheduleAtFixedRate(
                 {
-                    webClient.build()
-                        .post()
-                        .uri(refreshTokenUrl)
-                        .header("Content-Type", "application/x-www-form-urlencoded")
-                        .bodyValue("grant_type=refresh_token&refresh_token=$refreshToken&client_id=$clientId&client_secret=$clientSecret")
-                        .retrieve()
-                        .bodyToMono(String::class.java)
-                        .map { response ->
-                            val jsonResponse = JSONObject(response)
-                            hhOAuth.access_token = jsonResponse.getString("access_token")
-                            hhOAuthRepository.save(hhOAuth)
-                        }
-                        .subscribe()
+                    try {
+                        webClient.build()
+                            .post()
+                            .uri(refreshTokenUrl)
+                            .header("Content-Type", "application/x-www-form-urlencoded")
+                            .bodyValue("grant_type=refresh_token&refresh_token=$refreshToken&client_id=$clientId&client_secret=$clientSecret")
+                            .retrieve()
+                            .bodyToMono(String::class.java)
+                            .doOnError { e -> println("Ошибка при обращении к HH API: ${e.message}") }
+                            .onErrorReturn("")
+                            .map { response ->
+                                try {
+                                    val jsonResponse = JSONObject(response)
+                                    hhOAuth.access_token = jsonResponse.getString("access_token")
+                                    hhOAuthRepository.save(hhOAuth)
+                                } catch (jsonException: JSONException) {
+                                    println("Ошибка парсинга JSON: ${jsonException.message}")
+                                }
+                            }
+                            .subscribe()
+                    } catch (e: Exception) {
+                        println("Ошибка при обновлении токена: ${e.message}")
+                    }
                 },
                 0,
-                it.toLong(),
+                expiresIn.toLong(),
                 TimeUnit.MILLISECONDS
             )
         }
     }
+
 
     fun stopRefreshAccessToken(){
         scheduledTask?.cancel(true)
@@ -104,6 +116,7 @@ class OAuthService (
             )
             .retrieve()
             .bodyToMono(String::class.java)
+            .doOnError { e -> println("Error occurred while calling HH API: ${e.message}") }
             .block()
 
 

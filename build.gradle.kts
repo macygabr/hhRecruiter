@@ -1,3 +1,5 @@
+import javax.print.attribute.standard.MediaSize.Other
+
 plugins {
 	kotlin("jvm") version "1.9.25"
 	kotlin("plugin.spring") version "1.9.25"
@@ -27,22 +29,28 @@ repositories {
 extra["springBootAdminVersion"] = "3.3.4"
 
 dependencies {
+//	Spring-boot
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.springframework.boot:spring-boot-starter-webflux")
-//	implementation("org.springframework.boot:spring-boot-starter-security")
-//	implementation("de.codecentric:spring-boot-admin-starter-server")
-//	implementation("org.jetbrains.kotlin:kotlin-reflect")
-	compileOnly("org.projectlombok:lombok")
-	annotationProcessor("org.projectlombok:lombok")
-	testImplementation("org.springframework.boot:spring-boot-starter-test")
-//	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-//	testImplementation("org.springframework.security:spring-security-test")
-	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-	implementation("org.json:json:20240303")
 
+//	Tests
+	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+
+//	Hibernate
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	runtimeOnly("org.postgresql:postgresql")
+
+//	Elasticsearch
+	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
+	implementation("org.springframework.boot:spring-boot-starter-logging")
+
+//	Other
+	compileOnly("org.projectlombok:lombok")
+	annotationProcessor("org.projectlombok:lombok")
+	implementation("org.json:json:20240303")
 }
 
 dependencyManagement {

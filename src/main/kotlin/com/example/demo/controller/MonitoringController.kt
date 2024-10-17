@@ -1,6 +1,7 @@
 package com.example.demo.controller
 
 import com.example.demo.service.OAuthService
+import com.example.demo.service.ResumeService
 import com.example.demo.service.VacancyService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -10,12 +11,14 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 class MonitoringController(
     private val vacancyService: VacancyService,
-    private val oauthService: OAuthService
+    private val oauthService: OAuthService,
+    private val resumeService: ResumeService
 ) {
     @GetMapping("/start_monitoring")
     fun startMonitoring(): ResponseEntity<String> {
         return try {
-            vacancyService.startMonitoringVacancies()
+            val resumeId = resumeService.getResumeId()
+            vacancyService.startMonitoringVacancies(resumeId)
             oauthService.refreshAccessToken()
             ResponseEntity("", HttpStatus.OK)
         } catch (e:Exception){

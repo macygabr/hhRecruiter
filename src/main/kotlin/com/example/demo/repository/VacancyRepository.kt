@@ -33,7 +33,6 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
                 .bodyToMono(Map::class.java)
                 .block()
 
-
             response?.get("items")?.let { items ->
                 (items as List<Map<*, *>>).forEach { item ->
                     val id = item["id"] as? String ?: throw IllegalArgumentException("Title cannot be null")

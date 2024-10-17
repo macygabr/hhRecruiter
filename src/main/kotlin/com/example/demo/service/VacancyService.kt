@@ -15,16 +15,13 @@ class VacancyService(private val webClient: WebClient.Builder, private val repos
 
     val totalVacancies = 200
 
-    @Value("\${resume.id}")
-    private val resumeId: String = ""
-
     private val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
     private var scheduledTask: ScheduledFuture<*>? = null
 
-    fun startMonitoringVacancies() {
+    fun startMonitoringVacancies(resumeId:String) {
         println("Запуск мониторинга вакансий...")
         scheduledTask = scheduler.scheduleAtFixedRate(
-            { monitorVacancies() },
+            { monitorVacancies(resumeId) },
             0,
             1,
             TimeUnit.DAYS
@@ -37,28 +34,31 @@ class VacancyService(private val webClient: WebClient.Builder, private val repos
         println("Мониторинг вакансий остановлен")
     }
 
-    private fun monitorVacancies() {
-        val accessToken = hhOAuthRepository.findByToken("1").access_token
-        val vacancies = repository.getVacancies(accessToken, contentType)
-        println("Найдено вакансий: ${vacancies.size}")
-        if (vacancies.isEmpty()) return
+    private fun monitorVacancies(resumeId:String) {
+        try {
+            val accessToken = hhOAuthRepository.findByToken("1").access_token
+            val vacancies = repository.getVacancies(accessToken, contentType)
+            println("Найдено вакансий: ${vacancies.size}")
+            if (vacancies.isEmpty()) return
 
-        vacancies.stream().forEach { vacancy ->
-            val vacancyId = vacancy.id
-            try {
-                println("Пробую...: ${vacancy.url}")
-                Thread.sleep(24*60*60*1000L/totalVacancies)
-                val response = applyToVacancy(vacancyId, resumeId)
-                println("Отклик на вакансию: ${vacancy.url}, Ответ: $response")
-            } catch (e: Exception) {
-                println("Ошибка при отклике на вакансию: ${vacancy.url}, Ошибка: ${e.message}")
+            vacancies.stream().forEach { vacancy ->
+                val vacancyId = vacancy.id
+                try {
+                    println("Пробую...: ${vacancy.url}")
+                    Thread.sleep(24*60*60*1000L/totalVacancies)
+                    val response = applyToVacancy(vacancyId, resumeId)
+                    println("Отклик на вакансию: ${vacancy.url}, Ответ: $response")
+                } catch (e: Exception) {
+                    println("Ошибка при отклике на вакансию: ${vacancy.url}, Ошибка: ${e.message}")
+                }
             }
+        } catch (e:Exception){
+            println("Ошибка при мониторинге вакансий: ${e.message}")
         }
     }
 
     fun applyToVacancy(vacancyId: String, resumeId: String): String? {
         val apiUrl = "https://api.hh.ru/negotiations?vacancy_id=$vacancyId&resume_id=$resumeId"
-
         val accessToken = hhOAuthRepository.findByToken("1").access_token
         return webClient.build()
             .post()
@@ -67,6 +67,7 @@ class VacancyService(private val webClient: WebClient.Builder, private val repos
             .header("Content-Type", contentType)
             .retrieve()
             .bodyToMono(String::class.java)
+            .doOnError { e -> println("Error occurred while calling HH API: ${e.message}") }
             .block()
     }
 }
