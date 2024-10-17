@@ -4,6 +4,7 @@ import com.example.demo.dto.VacancyDTO
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Repository
 import org.springframework.web.reactive.function.client.WebClient
+import java.net.URLEncoder
 
 @Repository
 class VacancyRepository(private val webClient: WebClient.Builder) {
@@ -16,17 +17,14 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
 
 
     fun getVacancies(accessToken:String, contentType:String): List<VacancyDTO> {
-        val apiUrl = "https://api.hh.ru/vacancies"
-        val totalVacancies = 200
-        val vacanciesPerPage = 20
-        val totalPages = totalVacancies / vacanciesPerPage
+        println("Поиск вакансий...")
 
         val vacanciesList = mutableListOf<VacancyDTO>()
 
-        for (page in 0 until totalPages) {
+        for (i in 0 until 200) {
             val response = webClient.build()
                 .get()
-                .uri("$apiUrl?text=$query&experience=$experienceLevel")
+                .uri(getFilteredVacancies(i))
                 .header("Authorization", "Bearer $accessToken")
                 .header("Content-Type", contentType)
                 .retrieve()
@@ -35,13 +33,23 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
 
             response?.get("items")?.let { items ->
                 (items as List<Map<*, *>>).forEach { item ->
-                    val id = item["id"] as? String ?: throw IllegalArgumentException("Title cannot be null")
-                    val url = item["alternate_url"] as? String ?: throw IllegalArgumentException("URL cannot be null")
-                    vacanciesList.add(VacancyDTO(id, url))
+                    if(item["response_letter_required"] == false && item["has_test"] == false){
+                        val id = item["id"] as? String ?: throw IllegalArgumentException("Title cannot be null")
+                        val url = item["alternate_url"] as? String ?: throw IllegalArgumentException("URL cannot be null")
+                        vacanciesList.add(VacancyDTO(id, url))
+                    }
                 }
             }
         }
-
+        println("Найдено вакансий: ${vacanciesList.size}")
         return vacanciesList
+    }
+
+    fun getFilteredVacancies(
+        page: Int = 0
+    ): String {
+        val apiUrl = "https://api.hh.ru/vacancies"
+        return "$apiUrl?order_by=publication_time&page=$page&per_page=10" +
+                "&text=$query&experience=$experienceLevel"
     }
 }

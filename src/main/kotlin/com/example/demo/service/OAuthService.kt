@@ -8,7 +8,6 @@ import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
-import reactor.core.publisher.Mono
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
@@ -73,7 +72,7 @@ class OAuthService (
                                     hhOAuth.access_token = jsonResponse.getString("access_token")
                                     hhOAuthRepository.save(hhOAuth)
                                 } catch (jsonException: JSONException) {
-                                    println("Ошибка парсинга JSON: ${jsonException.message}")
+                                    println("Ошибка парсинга ответа: ${jsonException.message}")
                                 }
                             }
                             .subscribe()
@@ -83,7 +82,7 @@ class OAuthService (
                 },
                 0,
                 expiresIn.toLong(),
-                TimeUnit.MILLISECONDS
+                TimeUnit.SECONDS
             )
         }
     }

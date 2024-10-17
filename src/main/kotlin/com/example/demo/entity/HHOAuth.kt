@@ -27,4 +27,12 @@ class HHOAuth {
     var refresh_token: String = ""
 
     var expiresIn:Int? = null
+
+    @ManyToMany
+    @JoinTable(
+        name = "oauth_responses",
+        joinColumns = [JoinColumn(name = "oauth_id")],
+        inverseJoinColumns = [JoinColumn(name = "response_id")]
+    )
+    var listResponses: Set<Responses> = HashSet()
 }

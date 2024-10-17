@@ -3,17 +3,21 @@ package com.example.demo.service
 
 import com.example.demo.repository.HHOAuthRepository
 import com.example.demo.repository.VacancyRepository
+import org.json.JSONObject
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
-import java.util.concurrent.*
+import reactor.core.publisher.Mono
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+
 
 @Service
 class VacancyService(private val webClient: WebClient.Builder, private val repository: VacancyRepository, private val hhOAuthRepository: HHOAuthRepository) {
     @Value("\${content.type}")
     private val contentType: String = ""
-
-    val totalVacancies = 200
 
     private val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
     private var scheduledTask: ScheduledFuture<*>? = null
@@ -38,36 +42,39 @@ class VacancyService(private val webClient: WebClient.Builder, private val repos
         try {
             val accessToken = hhOAuthRepository.findByToken("1").access_token
             val vacancies = repository.getVacancies(accessToken, contentType)
-            println("Найдено вакансий: ${vacancies.size}")
-            if (vacancies.isEmpty()) return
-
-            vacancies.stream().forEach { vacancy ->
-                val vacancyId = vacancy.id
+            for ((id, url) in vacancies) {
                 try {
-                    println("Пробую...: ${vacancy.url}")
-                    Thread.sleep(24*60*60*1000L/totalVacancies)
-                    val response = applyToVacancy(vacancyId, resumeId)
-                    println("Отклик на вакансию: ${vacancy.url}, Ответ: $response")
+                    print("Try...: $url\t")
+                    applyToVacancy(id, resumeId, accessToken)
+                    println("Successful")
                 } catch (e: Exception) {
-                    println("Ошибка при отклике на вакансию: ${vacancy.url}, Ошибка: ${e.message}")
+                    println("Error: ${e.message}")
+                    if(e.message == "Daily negotiations limit is exceeded") {
+                        return
+                    }
                 }
             }
         } catch (e:Exception){
-            println("Ошибка при мониторинге вакансий: ${e.message}")
+            println("-----Error: ${e.message}")
         }
     }
 
-    fun applyToVacancy(vacancyId: String, resumeId: String): String? {
+    fun applyToVacancy(vacancyId: String, resumeId: String, accessToken: String): String? {
         val apiUrl = "https://api.hh.ru/negotiations?vacancy_id=$vacancyId&resume_id=$resumeId"
-        val accessToken = hhOAuthRepository.findByToken("1").access_token
         return webClient.build()
-            .post()
-            .uri(apiUrl)
-            .header("Authorization", "Bearer $accessToken")
-            .header("Content-Type", contentType)
-            .retrieve()
-            .bodyToMono(String::class.java)
-            .doOnError { e -> println("Error occurred while calling HH API: ${e.message}") }
-            .block()
+                .post()
+                .uri(apiUrl)
+                .header("Authorization", "Bearer $accessToken")
+                .header("Content-Type", contentType)
+                .retrieve()
+                .onStatus({ it.isError }) { response ->
+                    response.bodyToMono(String::class.java).flatMap { errorBody ->
+                        val jsonObject = JSONObject(errorBody)
+                        val description = jsonObject.optString("description", "Неизвестная ошибка")
+                        Mono.error(RuntimeException(description))
+                    }
+                }
+                .bodyToMono(String::class.java)
+                .block()
     }
 }
