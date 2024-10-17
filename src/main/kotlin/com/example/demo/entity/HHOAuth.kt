@@ -13,9 +13,18 @@ class HHOAuth {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long = 0
+
+    @Column(unique = true, nullable = false)
     var userId: Long = 0
+
+    @Column(unique = true)
     var token: String? = null
 
+    @Column(unique = true)
     var access_token: String=""
-    var refresh_token: String=""
+
+    @Column(unique = true)
+    var refresh_token: String = ""
+
+    var expiresIn:Int? = null
 }

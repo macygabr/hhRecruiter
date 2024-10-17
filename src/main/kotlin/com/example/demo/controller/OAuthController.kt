@@ -1,7 +1,7 @@
 package com.example.demo.controller
 
 import com.example.demo.repository.HHOAuthRepository
-import com.example.demo.service.VacancyService
+import com.example.demo.service.OAuthService
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -15,75 +15,23 @@ import org.springframework.web.reactive.function.BodyInserters
 
 @RestController
 class OAuthController(
-    private val hhOAuthRepository: HHOAuthRepository,
-    private val vacancyService: VacancyService
+    private val oauthService: OAuthService
 ) {
 
-    @Value("\${client.id}")
-    private val clientId: String = ""
-
-    @Value("\${client.secret}")
-    private val clientSecret: String = ""
-
-    @Value("\${redirect.url}")
-    private val redirectUri: String = ""
+    @GetMapping("/oauht_url")
+    fun getOAuthURL(): String {
+        return oauthService.getURL()
+    }
 
     @GetMapping("/callback")
     fun callback(@RequestParam("code") code: String): ResponseEntity<String> {
-        val tokenResponse = getAccessToken(clientId, clientSecret, code, redirectUri)
-        val hhOAuth = hhOAuthRepository.findByUserId(1L)
-
-        return if (hhOAuth != null && tokenResponse != null) {
-            hhOAuth.access_token = tokenResponse.accessToken
-            hhOAuth.refresh_token = tokenResponse.refreshToken
-            hhOAuthRepository.save(hhOAuth)
-            vacancyService.startMonitoringVacancies()
+        return try {
+            oauthService.callback(code)
             ResponseEntity("", HttpStatus.OK)
-        } else {
-            ResponseEntity("", HttpStatus.BAD_REQUEST)
-        }
-    }
-
-    fun getAccessToken(
-        clientId: String,
-        clientSecret: String,
-        authorizationCode: String,
-        redirectUri: String
-    ): OAuthTokenResponse? {
-        val webClient = WebClient.builder()
-            .baseUrl("https://hh.ru/oauth")
-            .build()
-
-        val responseBody = webClient.post()
-            .uri("/token")
-            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-            .body(
-                BodyInserters.fromFormData("grant_type", "authorization_code")
-                    .with("client_id", clientId)
-                    .with("client_secret", clientSecret)
-                    .with("code", authorizationCode)
-                    .with("redirect_uri", redirectUri)
-            )
-            .retrieve()
-            .bodyToMono(String::class.java)
-            .block()
-
-
-        return responseBody?.let {
-            val json = JSONObject(it)
-            OAuthTokenResponse(
-                accessToken = json.getString("access_token"),
-                tokenType = json.getString("token_type"),
-                refreshToken = json.getString("refresh_token"),
-                expiresIn = json.getInt("expires_in")
-            )
+        } catch (e:Exception){
+            ResponseEntity("${e.message}", HttpStatus.BAD_REQUEST)
         }
     }
 }
 
-data class OAuthTokenResponse(
-    val accessToken: String,
-    val tokenType: String,
-    val refreshToken: String,
-    val expiresIn: Int
-)
+
