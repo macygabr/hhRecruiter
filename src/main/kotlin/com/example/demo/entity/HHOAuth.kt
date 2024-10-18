@@ -21,18 +21,13 @@ class HHOAuth {
     var token: String? = null
 
     @Column(unique = true)
-    var access_token: String=""
+    var access_token: String?=null
 
     @Column(unique = true)
-    var refresh_token: String = ""
+    var refresh_token: String?=null
+
+    @Column(unique = true)
+    var resumeId: String = ""
 
     var expiresIn:Int? = null
-
-    @ManyToMany
-    @JoinTable(
-        name = "oauth_responses",
-        joinColumns = [JoinColumn(name = "oauth_id")],
-        inverseJoinColumns = [JoinColumn(name = "response_id")]
-    )
-    var listResponses: Set<Responses> = HashSet()
 }

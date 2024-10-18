@@ -1,5 +1,6 @@
 package com.example.demo.service
 
+import com.example.demo.entity.HHOAuth
 import com.example.demo.repository.HHOAuthRepository
 import org.json.JSONException
 import org.json.JSONObject
@@ -16,7 +17,8 @@ import java.util.concurrent.TimeUnit
 @Service
 class OAuthService (
     private val hhOAuthRepository: HHOAuthRepository,
-    private val webClient: WebClient.Builder
+    private val webClient: WebClient.Builder,
+    private val resumeService: ResumeService
 ){
 
     @Value("\${refreshtoken.url}")
@@ -40,15 +42,21 @@ class OAuthService (
         return "https://hh.ru/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUrl}"
     }
 
-    fun callback(code:String) {
+    fun checkAccessToken(token:String):Boolean{
+        val hhOAuth = hhOAuthRepository.findByToken(token)
+        return !(hhOAuth.access_token == null || hhOAuth.refresh_token == null || hhOAuth.expiresIn == null)
+    }
+
+    fun callback(code:String, token:String) {
         val tokenResponse = getAccessToken(clientId, clientSecret, code, redirectUri)
-        val hhOAuth = hhOAuthRepository.findByToken("1")
+        val hhOAuth = hhOAuthRepository.findByToken(token)
         hhOAuth.access_token = tokenResponse.accessToken
         hhOAuth.refresh_token = tokenResponse.refreshToken
         hhOAuth.expiresIn=tokenResponse.expiresIn
         hhOAuthRepository.save(hhOAuth)
     }
-    fun refreshAccessToken() {
+
+    fun refreshAccessToken(token:String) {
         println("Запуск обновления токена...")
         val hhOAuth = hhOAuthRepository.findByToken("1")
 
@@ -80,7 +88,7 @@ class OAuthService (
                         println("Ошибка при обновлении токена: ${e.message}")
                     }
                 },
-                0,
+                    expiresIn.toLong(),
                 expiresIn.toLong(),
                 TimeUnit.SECONDS
             )

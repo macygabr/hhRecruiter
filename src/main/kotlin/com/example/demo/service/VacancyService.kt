@@ -1,6 +1,8 @@
 package com.example.demo.service
 
 
+import com.example.demo.dto.VacancyDTO
+import com.example.demo.entity.HHOAuth
 import com.example.demo.repository.HHOAuthRepository
 import com.example.demo.repository.VacancyRepository
 import org.json.JSONObject
@@ -15,17 +17,25 @@ import java.util.concurrent.TimeUnit
 
 
 @Service
-class VacancyService(private val webClient: WebClient.Builder, private val repository: VacancyRepository, private val hhOAuthRepository: HHOAuthRepository) {
+class VacancyService(
+        private val webClient: WebClient.Builder,
+        private val repository: VacancyRepository,
+        private val hhOAuthRepository: HHOAuthRepository
+) {
+
     @Value("\${content.type}")
     private val contentType: String = ""
+
 
     private val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
     private var scheduledTask: ScheduledFuture<*>? = null
 
-    fun startMonitoringVacancies(resumeId:String) {
+    fun startMonitoringVacancies(token:String) {
         println("Запуск мониторинга вакансий...")
         scheduledTask = scheduler.scheduleAtFixedRate(
-            { monitorVacancies(resumeId) },
+            {
+                monitoringVacancies()
+            },
             0,
             1,
             TimeUnit.DAYS
@@ -38,14 +48,16 @@ class VacancyService(private val webClient: WebClient.Builder, private val repos
         println("Мониторинг вакансий остановлен")
     }
 
-    private fun monitorVacancies(resumeId:String) {
+
+    private fun monitoringVacancies() {
         try {
-            val accessToken = hhOAuthRepository.findByToken("1").access_token
-            val vacancies = repository.getVacancies(accessToken, contentType)
+            val hhOAuth = hhOAuthRepository.findByToken("1")
+            val vacancies = repository.getVacancies(hhOAuth)
+
             for ((id, url) in vacancies) {
                 try {
                     print("Try...: $url\t")
-                    applyToVacancy(id, resumeId, accessToken)
+                    applyToVacancy(id, hhOAuth)
                     println("Successful")
                 } catch (e: Exception) {
                     println("Error: ${e.message}")
@@ -59,12 +71,12 @@ class VacancyService(private val webClient: WebClient.Builder, private val repos
         }
     }
 
-    fun applyToVacancy(vacancyId: String, resumeId: String, accessToken: String): String? {
-        val apiUrl = "https://api.hh.ru/negotiations?vacancy_id=$vacancyId&resume_id=$resumeId"
+    fun applyToVacancy(vacancyId: String, hhOAuth:HHOAuth): String? {
+        val apiUrl = "https://api.hh.ru/negotiations?vacancy_id=$vacancyId&resume_id=${hhOAuth.resumeId}"
         return webClient.build()
                 .post()
                 .uri(apiUrl)
-                .header("Authorization", "Bearer $accessToken")
+                .header("Authorization", "Bearer ${hhOAuth.access_token}")
                 .header("Content-Type", contentType)
                 .retrieve()
                 .onStatus({ it.isError }) { response ->
