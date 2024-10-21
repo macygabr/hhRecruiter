@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 @ControllerAdvice
 class GlobalExceptionHandler {
     @ExceptionHandler(Exception::class)
-    fun handleGeneralException(ex: Exception?): ResponseEntity<String> {
-        val errorResponse = "An unexpected error occurred $ex"
-        return ResponseEntity(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR)
+    fun handleGeneralException(e: Exception): ResponseEntity<String> {
+        println(e.message)
+        return ResponseEntity(e.message, HttpStatus.INTERNAL_SERVER_ERROR)
     }
 }
 

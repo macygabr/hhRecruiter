@@ -1,7 +1,6 @@
 package com.example.demo.service
 
 
-import com.example.demo.dto.VacancyDTO
 import com.example.demo.entity.HHOAuth
 import com.example.demo.repository.HHOAuthRepository
 import com.example.demo.repository.VacancyRepository
@@ -30,11 +29,18 @@ class VacancyService(
     private val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
     private var scheduledTask: ScheduledFuture<*>? = null
 
+    fun getStatus(token: String):Boolean{
+        return hhOAuthRepository.findByToken(token)?.statusMonitoring ?: false
+    }
     fun startMonitoringVacancies(token:String) {
         println("Запуск мониторинга вакансий...")
+        var hhOAuth = hhOAuthRepository.findByToken(token)?:throw RuntimeException("User not found")
+        hhOAuth.statusMonitoring = true
+        hhOAuthRepository.save(hhOAuth)
         scheduledTask = scheduler.scheduleAtFixedRate(
             {
-                monitoringVacancies()
+                hhOAuth = hhOAuthRepository.findByToken(token)?:throw RuntimeException("User not found")
+                monitoringVacancies(hhOAuth)
             },
             0,
             1,
@@ -42,27 +48,30 @@ class VacancyService(
         )
     }
 
-    fun stopMonitoringVacancies() {
+    fun stopMonitoringVacancies(token:String) {
+        val hhOAuth = hhOAuthRepository.findByToken(token)?:throw RuntimeException("User not found")
+        hhOAuth.statusMonitoring = false
+        hhOAuthRepository.save(hhOAuth)
         scheduledTask?.cancel(true)
         scheduledTask = null
         println("Мониторинг вакансий остановлен")
     }
 
 
-    private fun monitoringVacancies() {
+    private fun monitoringVacancies(hhOAuth:HHOAuth) {
         try {
-            val hhOAuth = hhOAuthRepository.findByToken("1")
-            val vacancies = repository.getVacancies(hhOAuth)
-
-            for ((id, url) in vacancies) {
-                try {
-                    print("Try...: $url\t")
-                    applyToVacancy(id, hhOAuth)
-                    println("Successful")
-                } catch (e: Exception) {
-                    println("Error: ${e.message}")
-                    if(e.message == "Daily negotiations limit is exceeded") {
-                        return
+            for (i in 0 until 200) {
+                val vacancies = repository.getVacancies(hhOAuth, i)
+                for ((id, url) in vacancies) {
+                    try {
+                        print("Try...: $url\t")
+                        applyToVacancy(id, hhOAuth)
+                        println("Successful")
+                    } catch (e: Exception) {
+                        println("Error: ${e.message}")
+                        if(e.message == "Daily negotiations limit is exceeded") {
+                            return
+                        }
                     }
                 }
             }

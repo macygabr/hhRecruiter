@@ -1,6 +1,5 @@
 package com.example.demo.service
 
-import com.example.demo.entity.HHOAuth
 import com.example.demo.repository.HHOAuthRepository
 import org.json.JSONException
 import org.json.JSONObject
@@ -17,8 +16,7 @@ import java.util.concurrent.TimeUnit
 @Service
 class OAuthService (
     private val hhOAuthRepository: HHOAuthRepository,
-    private val webClient: WebClient.Builder,
-    private val resumeService: ResumeService
+    private val webClient: WebClient.Builder
 ){
 
     @Value("\${refreshtoken.url}")
@@ -43,13 +41,14 @@ class OAuthService (
     }
 
     fun checkAccessToken(token:String):Boolean{
-        val hhOAuth = hhOAuthRepository.findByToken(token)
+        val hhOAuth = hhOAuthRepository.findByToken(token)?:return false
         return !(hhOAuth.access_token == null || hhOAuth.refresh_token == null || hhOAuth.expiresIn == null)
     }
 
+
     fun callback(code:String, token:String) {
         val tokenResponse = getAccessToken(clientId, clientSecret, code, redirectUri)
-        val hhOAuth = hhOAuthRepository.findByToken(token)
+        val hhOAuth = hhOAuthRepository.findByToken(token)?:return
         hhOAuth.access_token = tokenResponse.accessToken
         hhOAuth.refresh_token = tokenResponse.refreshToken
         hhOAuth.expiresIn=tokenResponse.expiresIn
@@ -58,7 +57,7 @@ class OAuthService (
 
     fun refreshAccessToken(token:String) {
         println("Запуск обновления токена...")
-        val hhOAuth = hhOAuthRepository.findByToken("1")
+        val hhOAuth = hhOAuthRepository.findByToken(token)?:throw RuntimeException("User not found")
 
         val refreshToken = hhOAuth.refresh_token
         scheduledTask = hhOAuth.expiresIn?.let { expiresIn ->
@@ -96,7 +95,7 @@ class OAuthService (
     }
 
 
-    fun stopRefreshAccessToken(){
+    fun stopRefreshAccessToken(token:String){
         scheduledTask?.cancel(true)
         scheduledTask = null
     }

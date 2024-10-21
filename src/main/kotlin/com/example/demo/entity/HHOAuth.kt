@@ -29,5 +29,8 @@ class HHOAuth {
     @Column(unique = true)
     var resumeId: String = ""
 
+    @Column
+    var statusMonitoring: Boolean = false
+
     var expiresIn:Int? = null
 }

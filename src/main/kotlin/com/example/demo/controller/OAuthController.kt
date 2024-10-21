@@ -10,14 +10,6 @@ import org.springframework.web.bind.annotation.*
 class OAuthController(
         private val oauthService: OAuthService
 ) {
-
-    fun checkOAuth(token:String):Boolean {
-        return oauthService.checkAccessToken(token)
-    }
-    fun getOAuthURL(): String {
-        return oauthService.getURL()
-    }
-
     @GetMapping("/callback")
     fun callback(@RequestParam("code") code: String, @RequestHeader("Authorization") token: String): ResponseEntity<String> {
         return try {

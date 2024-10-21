@@ -28,11 +28,12 @@ class ResumeRepository(
         response?.get("items")?.let { items ->
             (items as List<Map<*, *>>).forEach { item ->
                 val id = item["id"] as? String ?: throw IllegalArgumentException("Resume ID cannot be null")
-                resumesList.add(ResumeDTO(id))
+                val title = item["title"] as? String ?: throw IllegalArgumentException("Resume ID cannot be null")
+                resumesList.add(ResumeDTO(id, title))
             }
         }
 
-        println("Полученные резюме: $resumesList")
+        println("Полученное резюме: ${resumesList.first()}")
         return resumesList
     }
 }

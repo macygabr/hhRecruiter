@@ -16,10 +16,22 @@ class SignService(
         hhOAuthRepository.save(hhOAuth)
     }
 
-    fun signIn(request: SignRequest){
-        hhOAuthRepository.findByUserId(request.userId).token = request.token
+    fun signIn(token: String, userId: Long) {
+        val existingOAuth = hhOAuthRepository.findByUserId(userId)
+
+        if (existingOAuth != null) {
+            existingOAuth.token = token
+            hhOAuthRepository.save(existingOAuth)
+        } else {
+            val newOAuth = HHOAuth().apply {
+                this.userId = userId
+                this.token = token
+            }
+            hhOAuthRepository.save(newOAuth)
+        }
     }
+
     fun signOut(request: SignRequest){
-        hhOAuthRepository.findByUserId(request.userId).token = null
+        hhOAuthRepository.findByUserId(request.userId)?.token = null
     }
 }

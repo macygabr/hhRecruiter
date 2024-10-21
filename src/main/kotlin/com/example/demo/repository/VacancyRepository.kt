@@ -20,16 +20,13 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
 
     private var responsesList=mutableListOf<VacancyDTO>()
 
-    fun getVacancies(hhOAuth: HHOAuth): List<VacancyDTO> {
+    fun getVacancies(hhOAuth: HHOAuth, i: Int): List<VacancyDTO> {
 
-        println("Search response...")
-        getResponses(hhOAuth)
-        println("Search vacancy...")
+        getResponses(hhOAuth) //все отклики пользователя
 
         val vacanciesList = mutableListOf<VacancyDTO>()
 
-        for (i in 0 until 200) {
-            val response = webClient.build()
+        val response = webClient.build()
                 .get()
                 .uri(getFilteredVacancies(i))
                 .header("Authorization", "Bearer ${hhOAuth.access_token}")
@@ -38,17 +35,15 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
                 .bodyToMono(Map::class.java)
                 .block()
 
-            response?.get("items")?.let { items ->
-                (items as List<Map<*, *>>).forEach { item ->
-                    if(item["response_letter_required"] == false && item["has_test"] == false && containInResponsesList(item["id"])){
-                        val id = item["id"] as? String ?: throw IllegalArgumentException("Title cannot be null")
-                        val url = item["alternate_url"] as? String ?: throw IllegalArgumentException("URL cannot be null")
-                        vacanciesList.add(VacancyDTO(id, url))
-                    }
+        response?.get("items")?.let { items ->
+            (items as List<Map<*, *>>).forEach { item ->
+                if(item["response_letter_required"] == false && item["has_test"] == false && containInResponsesList(item["id"])){
+                    val id = item["id"] as? String ?: throw IllegalArgumentException("Title cannot be null")
+                    val url = item["alternate_url"] as? String ?: throw IllegalArgumentException("URL cannot be null")
+                    vacanciesList.add(VacancyDTO(id, url))
                 }
             }
         }
-        println("Result count vacancies: ${vacanciesList.size}")
         return vacanciesList
     }
 
