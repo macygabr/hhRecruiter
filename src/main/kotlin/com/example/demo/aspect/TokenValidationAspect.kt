@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component
 class TokenValidationAspect(
         private val hhOAuthRepository: HHOAuthRepository
 ) {
-    @Around("execution(* com.example.demo.controller.*.*(.., @org.springframework.web.bind.annotation.RequestHeader (*), ..))")
+    @Around("execution(* com.example.demo.controller.*.*(.., @org.springframework.web.bind.annotation.RequestHeader (*), ..)) && !within(com.example.demo.controller.SignController)")
     fun validateToken(joinPoint: ProceedingJoinPoint): Any {
         val args = joinPoint.args
 
@@ -32,9 +32,9 @@ class TokenValidationAspect(
         val newToken = token.split(" ")[1]
         args[tokenIndex] = newToken
 
-//        if(hhOAuthRepository.findByToken(newToken) == null){
-//            return ResponseEntity("Invalid or missing token", HttpStatus.UNAUTHORIZED)
-//        }
+        if(hhOAuthRepository.findByToken(newToken) == null){
+            return ResponseEntity("Invalid or missing token", HttpStatus.UNAUTHORIZED)
+        }
 
         return joinPoint.proceed(args)
     }
