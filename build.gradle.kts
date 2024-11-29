@@ -34,6 +34,7 @@ dependencies {
 //	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
+	implementation("org.springframework.kafka:spring-kafka")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 //	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 //	testImplementation("org.springframework.security:spring-security-test")

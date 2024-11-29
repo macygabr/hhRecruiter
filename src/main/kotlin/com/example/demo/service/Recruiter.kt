@@ -1,15 +1,21 @@
 package com.example.demo.service
 
-
+import com.example.demo.entity.AuthenticationServerResponse
 import com.example.demo.repository.HHOAuthRepository
 import com.example.demo.repository.VacancyRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
-import java.util.concurrent.*
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 
 @Service
-class VacancyService(private val webClient: WebClient.Builder, private val repository: VacancyRepository, private val hhOAuthRepository: HHOAuthRepository) {
+class Recruiter(private val webClient: WebClient.Builder,  private val repository: VacancyRepository, private val hhOAuthRepository: HHOAuthRepository)  {
+    private val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
+    private var scheduledTask: ScheduledFuture<*>? = null
+
     @Value("\${content.type}")
     private val contentType: String = ""
 
@@ -17,14 +23,10 @@ class VacancyService(private val webClient: WebClient.Builder, private val repos
 
     @Value("\${resume.id}")
     private val resumeId: String = ""
-
-    private val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
-    private var scheduledTask: ScheduledFuture<*>? = null
-
-    fun startMonitoringVacancies() {
+    fun startMonitoringVacancies(response: AuthenticationServerResponse) {
         println("Запуск мониторинга вакансий...")
         scheduledTask = scheduler.scheduleAtFixedRate(
-            { monitorVacancies() },
+            { monitorVacancies(response) },
             0,
             1,
             TimeUnit.DAYS
@@ -37,8 +39,8 @@ class VacancyService(private val webClient: WebClient.Builder, private val repos
         println("Мониторинг вакансий остановлен")
     }
 
-    private fun monitorVacancies() {
-        val accessToken = hhOAuthRepository.findByToken("1").access_token
+    private fun monitorVacancies(data: AuthenticationServerResponse) {
+        val accessToken = hhOAuthRepository.findByToken(data.token).access_token.let {""}
         val vacancies = repository.getVacancies(accessToken, contentType)
         println("Найдено вакансий: ${vacancies.size}")
         if (vacancies.isEmpty()) return
@@ -48,7 +50,7 @@ class VacancyService(private val webClient: WebClient.Builder, private val repos
             try {
                 println("Пробую...: ${vacancy.url}")
                 Thread.sleep(24*60*60*1000L/totalVacancies)
-                val response = applyToVacancy(vacancyId, resumeId)
+                val response = applyToVacancy(data, vacancyId, resumeId)
                 println("Отклик на вакансию: ${vacancy.url}, Ответ: $response")
             } catch (e: Exception) {
                 println("Ошибка при отклике на вакансию: ${vacancy.url}, Ошибка: ${e.message}")
@@ -56,10 +58,10 @@ class VacancyService(private val webClient: WebClient.Builder, private val repos
         }
     }
 
-    fun applyToVacancy(vacancyId: String, resumeId: String): String? {
+    fun applyToVacancy(data: AuthenticationServerResponse, vacancyId: String, resumeId: String): String? {
         val apiUrl = "https://api.hh.ru/negotiations?vacancy_id=$vacancyId&resume_id=$resumeId"
 
-        val accessToken = hhOAuthRepository.findByToken("1").access_token
+        val accessToken = hhOAuthRepository.findByToken(data.token).access_token
         return webClient.build()
             .post()
             .uri(apiUrl)

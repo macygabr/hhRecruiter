@@ -21,10 +21,10 @@ class HHOAuth {
     var token: String? = null
 
     @Column(unique = true)
-    var access_token: String=""
+    var access_token: String? = null
 
     @Column(unique = true)
-    var refresh_token: String = ""
+    var refresh_token: String? = null
 
     var expiresIn:Int? = null
 }

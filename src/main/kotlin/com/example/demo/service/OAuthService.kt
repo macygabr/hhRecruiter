@@ -1,6 +1,9 @@
 package com.example.demo.service
 
 import com.example.demo.repository.HHOAuthRepository
+import com.example.demo.entity.AuthenticationServerResponse
+import com.example.demo.entity.HHOAuth
+import com.example.demo.entity.Request
 import org.json.JSONObject
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
@@ -39,6 +42,15 @@ class OAuthService (
         return "https://hh.ru/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUrl}"
     }
 
+    fun status(request: Request): HHOAuth {
+        hhOAuthRepository.findByToken(request.)
+        return HHOAuth()
+    }
+
+    fun userAuthInHH(response:AuthenticationServerResponse):Boolean {
+        val hhoauth = hhOAuthRepository.findByToken(response.token)
+        return hhoauth.access_token!=null && hhoauth.refresh_token !=null
+    }
     fun callback(code:String) {
         val tokenResponse = getAccessToken(clientId, clientSecret, code, redirectUri)
         val hhOAuth = hhOAuthRepository.findByToken("1")
