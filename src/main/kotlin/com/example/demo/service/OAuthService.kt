@@ -4,12 +4,14 @@ import com.example.demo.repository.HHOAuthRepository
 import com.example.demo.entity.AuthenticationServerResponse
 import com.example.demo.entity.HHOAuth
 import com.example.demo.entity.Request
+import com.example.demo.entity.Response
 import org.json.JSONObject
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
+import reactor.core.publisher.Mono
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
@@ -42,27 +44,27 @@ class OAuthService (
         return "https://hh.ru/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUrl}"
     }
 
-    fun status(request: Request): HHOAuth {
-        hhOAuthRepository.findByToken(request.)
-        return HHOAuth()
+    fun status(request: Request): HHOAuth? {
+        return hhOAuthRepository.findByToken(request.authorizationHeader)
     }
 
-    fun userAuthInHH(response:AuthenticationServerResponse):Boolean {
-        val hhoauth = hhOAuthRepository.findByToken(response.token)
+    fun userAuthInHH(request:  Request):Boolean {
+        val hhoauth = hhOAuthRepository.findByToken(request.authorizationHeader)
         return hhoauth.access_token!=null && hhoauth.refresh_token !=null
     }
-    fun callback(code:String) {
-        val tokenResponse = getAccessToken(clientId, clientSecret, code, redirectUri)
-        val hhOAuth = hhOAuthRepository.findByToken("1")
+    fun callback(request:Request) {
+        if(request.code == null) throw RuntimeException("code is null")
+        val tokenResponse = getAccessToken(clientId, clientSecret, request.code!!, redirectUri)
+        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)
         hhOAuth.access_token = tokenResponse.accessToken
         hhOAuth.refresh_token = tokenResponse.refreshToken
         hhOAuth.expiresIn=tokenResponse.expiresIn
         hhOAuthRepository.save(hhOAuth)
     }
-    fun refreshAccessToken() {
+    fun refreshAccessToken(request: Request) {
         println("Запуск обновения токена...")
 
-        val hhOAuth = hhOAuthRepository.findByToken("1")
+        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)
         val refreshToken = hhOAuth.refresh_token
 
         scheduledTask = hhOAuth.expiresIn?.let {
@@ -115,6 +117,14 @@ class OAuthService (
                     .with("redirect_uri", redirectUri)
             )
             .retrieve()
+            .onStatus({ status -> status.is4xxClientError || status.is5xxServerError }) { response ->
+                response.bodyToMono(String::class.java).flatMap { errorBody ->
+                    val errorJson = JSONObject(errorBody)
+                    val error = errorJson.optString("error", "Unknown error")
+                    val errorDescription = errorJson.optString("error_description", "No description available")
+                    Mono.error(IllegalStateException("Error: $error, Description: $errorDescription"))
+                }
+            }
             .bodyToMono(String::class.java)
             .block()
 

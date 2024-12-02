@@ -13,11 +13,10 @@ class Updater(private val hhoAuthRepository: HHOAuthRepository) {
     @KafkaListener(topics = ["auth_response"], containerFactory = "kafkaListenerApiGateWayService")
     fun updateToken(message: ConsumerRecord<String, String>) {
         try {
-            System.err.println("updateToken key: ${message.key()} value: ${message.value()}")
             val response = AuthenticationServerResponse().readJson(message.value())
             val data = hhoAuthRepository.findByUserId(response.userId)
             data.token = response.token
-            System.err.println("Updating hhoauth: ${data.id} ${data.token}")
+            System.out.println("Updating hhoauth: ${data.id} ${data.token}")
             hhoAuthRepository.save(data)
         } catch (e:Exception){
             println(e.message)

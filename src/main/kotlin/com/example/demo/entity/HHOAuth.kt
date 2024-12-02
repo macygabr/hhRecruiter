@@ -7,24 +7,22 @@ import lombok.NoArgsConstructor
 
 @Entity
 @Table(name = "hhOAuth")
-@NoArgsConstructor
-@AllArgsConstructor
-class HHOAuth {
+data class HHOAuth(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long = 0
+    var id: Long = 0,
 
     @Column(unique = true, nullable = false)
-    var userId: Long = 0
+    var userId: Long = 0,
 
     @Column(unique = true)
-    var token: String? = null
+    var token: String? = null,
 
     @Column(unique = true)
-    var access_token: String? = null
+    var access_token: String? = null,
 
     @Column(unique = true)
-    var refresh_token: String? = null
+    var refresh_token: String? = null,
 
-    var expiresIn:Int? = null
-}
+    var expiresIn: Int? = null
+)

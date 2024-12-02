@@ -1,31 +1,57 @@
-//package com.example.demo.controller
-//
-//import com.example.demo.service.OAuthService
-//import org.springframework.web.bind.annotation.GetMapping
-//import org.springframework.web.bind.annotation.RequestParam
-//import org.springframework.web.bind.annotation.RestController
-//import org.springframework.http.HttpStatus
-//import org.springframework.http.ResponseEntity
-//
-//@RestController
-//class OAuthController(
-//    private val oauthService: OAuthService
-//) {
-//
-//    @GetMapping("/oauht_url")
-//    fun getOAuthURL(): String {
-//        return oauthService.getURL()
-//    }
-//
-//    @GetMapping("/callback")
-//    fun callback(@RequestParam("code") code: String): ResponseEntity<String> {
-//        return try {
-//            oauthService.callback(code)
-//            ResponseEntity("", HttpStatus.OK)
-//        } catch (e:Exception) {
-//            ResponseEntity("${e.message}", HttpStatus.BAD_REQUEST)
-//        }
-//    }
-//}
-//
-//
+package com.example.demo.controller
+
+import com.example.demo.entity.Request
+import com.example.demo.entity.Response
+import com.example.demo.service.OAuthService
+import com.example.demo.service.kafka.KafkaProducerService
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.kafka.annotation.KafkaListener
+
+@RestController
+class OAuthController(
+    private val kafkaProducer: KafkaProducerService,
+    private val oauthService: OAuthService
+) {
+
+    @KafkaListener(topics = ["registry"], containerFactory = "kafkaListenerAuthService")
+    fun getOAuthURL(message: ConsumerRecord<String, String>) {
+        val response = Response()
+        val request = Request()
+
+        try {
+            response.message = oauthService.getURL()
+            response.status = HttpStatus.OK
+        } catch (e:Exception) {
+
+        } finally {
+            System.err.println( response.toJson())
+            kafkaProducer.sendMessage("response", message.key(), response.toJson())
+        }
+    }
+
+    @KafkaListener(topics = ["callback"], containerFactory = "kafkaListenerAuthService")
+    fun callback(message: ConsumerRecord<String, String>) {
+        val response = Response()
+        val request = Request()
+
+        try {
+            request.readJson(message.value())
+            oauthService.callback(request)
+            response.status = HttpStatus.OK
+        } catch (e:Exception) {
+            System.err.println(e)
+            response.status = HttpStatus.BAD_REQUEST
+            response.message = e.message.toString()
+        } finally {
+            System.err.println(response.toJson())
+            kafkaProducer.sendMessage("response", message.key(), response.toJson())
+        }
+
+    }
+}
+
+

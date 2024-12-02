@@ -7,6 +7,7 @@ import com.example.demo.service.OAuthService
 import com.example.demo.service.Recruiter
 import com.example.demo.service.kafka.KafkaProducerService
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.springframework.dao.EmptyResultDataAccessException
 import org.springframework.http.HttpStatus
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.stereotype.Service
@@ -19,26 +20,25 @@ class MonitoringController(
 ) {
     @KafkaListener(topics = ["start"], containerFactory = "kafkaListenerAuthService")
     fun startMonitoring(message: ConsumerRecord<String, String>) {
-        val response = AuthenticationServerResponse()
+        val response = Response()
+        val request = Request()
 
         try {
-             System.err.println("start key: ${message.key()} value: ${message.value()}")
-             response.readJson(message.value())
-
-             if(oauthService.userAuthInHH(response)) {
-                 recruiter.startMonitoringVacancies(response)
-                 oauthService.refreshAccessToken()
+            request.readJson(message.value())
+             if(oauthService.userAuthInHH(request)) {
                  response.status = HttpStatus.OK
+                 kafkaProducer.sendMessage("response", message.key(), response.toJson())
+                 recruiter.startMonitoringVacancies(request)
+//                 oauthService.refreshAccessToken(request)
              } else {
-                 response.message = oauthService.getURL()
+                 response.message = "login hh.ru"
                  response.status = HttpStatus.UNAUTHORIZED
              }
         } catch (e:Exception) {
-                response.message = e.message.toString()
-                response.status = HttpStatus.BAD_REQUEST
-        } finally {
-            System.err.println( response.toJson())
-             kafkaProducer.sendMessage("response", message.key(), response.toJson())
+            response.message = e.message.toString()
+            response.status = HttpStatus.BAD_REQUEST
+            System.err.println(response.toJson())
+            kafkaProducer.sendMessage("response", message.key(), response.toJson())
         }
     }
 
@@ -56,21 +56,30 @@ class MonitoringController(
 
     @KafkaListener(topics = ["status"], containerFactory = "kafkaListenerAuthService")
     fun statusMonitoring(message: ConsumerRecord<String, String>) {
-        System.err.println("status key: ${message.key()} value: ${message.value()}")
+
         val response = Response()
         val request = Request()
+
         try {
+            request.readJson(message.value())
+            System.err.println(request)
+            val hhoauth = oauthService.status(request)
 
-            val hhoauth = oauthService.status()
-
-            if(hhoauth.access_token == null || hhoauth.token == null){
-                response.status = HttpStatus.FORBIDDEN
-                response.message = "login hh.ru"
-            } else {
+            if(hhoauth == null){
+                response.status = HttpStatus.UNAUTHORIZED
+                response.message = "token invalid"
+            } else if(oauthService.userAuthInHH(request)){
                 response.status = HttpStatus.OK
                 response.message = hhoauth.toString()
+            } else {
+                response.status = HttpStatus.FORBIDDEN
+                response.message = "login hh.ru"
             }
 
+        } catch (e: EmptyResultDataAccessException) {
+            System.err.println(e.message)
+            response.status = HttpStatus.UNAUTHORIZED
+            response.message = "token invalid"
         } catch (e:Exception){
             System.err.println(e.message)
             response.status =HttpStatus.BAD_REQUEST
