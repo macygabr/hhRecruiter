@@ -1,5 +1,6 @@
 package com.example.demo.controller
 
+
 import com.example.demo.entity.Request
 import com.example.demo.entity.Response
 import com.example.demo.service.OAuthService
@@ -53,5 +54,3 @@ class OAuthController(
 
     }
 }
-
-

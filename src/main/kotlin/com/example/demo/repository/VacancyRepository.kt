@@ -1,6 +1,9 @@
 package com.example.demo.repository
 
+
 import com.example.demo.entity.Vacancy
+import com.example.demo.dto.VacancyDTO
+import com.example.demo.entity.HHOAuth
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Repository
 import org.springframework.web.reactive.function.client.WebClient
@@ -13,6 +16,7 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
 
     @Value("\${vacancy.level}")
     private val experienceLevel: String = ""
+
 
     private val applyVacanciesList = mutableListOf<String>()
 
@@ -30,7 +34,7 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
         while (vacanciesList.size < 200 && iterations < 20) {
             val response = webClient.build()
                 .get()
-                .uri("$apiUrl?text=$query&experience=$experienceLevel")
+                .uri(apiUrl)
                 .header("Authorization", "Bearer $accessToken")
                 .header("Content-Type", contentType)
                 .retrieve()

@@ -5,6 +5,7 @@ import com.example.demo.entity.AuthenticationServerResponse
 import com.example.demo.entity.HHOAuth
 import com.example.demo.entity.Request
 import com.example.demo.entity.Response
+import org.json.JSONException
 import org.json.JSONObject
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
@@ -44,54 +45,67 @@ class OAuthService (
         return "https://hh.ru/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUrl}"
     }
 
+
     fun status(request: Request): HHOAuth? {
         return hhOAuthRepository.findByToken(request.authorizationHeader)
     }
 
     fun userAuthInHH(request:  Request):Boolean {
-        val hhoauth = hhOAuthRepository.findByToken(request.authorizationHeader)
+        val hhoauth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw RuntimeException("User not found")
         return hhoauth.access_token!=null && hhoauth.refresh_token !=null
     }
     fun callback(request:Request) {
         if(request.code == null) throw RuntimeException("code is null")
         val tokenResponse = getAccessToken(clientId, clientSecret, request.code!!, redirectUri)
-        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)
+        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw RuntimeException("User not found")
+
         hhOAuth.access_token = tokenResponse.accessToken
         hhOAuth.refresh_token = tokenResponse.refreshToken
         hhOAuth.expiresIn=tokenResponse.expiresIn
         hhOAuthRepository.save(hhOAuth)
     }
+
     fun refreshAccessToken(request: Request) {
         println("Запуск обновения токена...")
 
-        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)
+        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw RuntimeException("User not found")
         val refreshToken = hhOAuth.refresh_token
-
-        scheduledTask = hhOAuth.expiresIn?.let {
+        scheduledTask = hhOAuth.expiresIn?.let { expiresIn ->
             scheduler.scheduleAtFixedRate(
                 {
-                    webClient.build()
-                        .post()
-                        .uri(refreshTokenUrl)
-                        .header("Content-Type", "application/x-www-form-urlencoded")
-                        .bodyValue("grant_type=refresh_token&refresh_token=$refreshToken&client_id=$clientId&client_secret=$clientSecret")
-                        .retrieve()
-                        .bodyToMono(String::class.java)
-                        .map { response ->
-                            val jsonResponse = JSONObject(response)
-                            hhOAuth.access_token = jsonResponse.getString("access_token")
-                            hhOAuthRepository.save(hhOAuth)
-                        }
-                        .subscribe()
+                    try {
+                        webClient.build()
+                            .post()
+                            .uri(refreshTokenUrl)
+                            .header("Content-Type", "application/x-www-form-urlencoded")
+                            .bodyValue("grant_type=refresh_token&refresh_token=$refreshToken&client_id=$clientId&client_secret=$clientSecret")
+                            .retrieve()
+                            .bodyToMono(String::class.java)
+                            .doOnError { e -> println("Ошибка при обращении к HH API: ${e.message}") }
+                            .onErrorReturn("")
+                            .map { response ->
+                                try {
+                                    val jsonResponse = JSONObject(response)
+                                    hhOAuth.access_token = jsonResponse.getString("access_token")
+                                    hhOAuthRepository.save(hhOAuth)
+                                } catch (jsonException: JSONException) {
+                                    println("Ошибка парсинга ответа: ${jsonException.message}")
+                                }
+                            }
+                            .subscribe()
+                    } catch (e: Exception) {
+                        println("Ошибка при обновлении токена: ${e.message}")
+                    }
                 },
-                0,
-                it.toLong(),
-                TimeUnit.MILLISECONDS
+                    expiresIn.toLong(),
+                expiresIn.toLong(),
+                TimeUnit.SECONDS
             )
         }
     }
 
-    fun stopRefreshAccessToken(){
+
+    fun stopRefreshAccessToken(token:String){
         scheduledTask?.cancel(true)
         scheduledTask = null
     }
@@ -126,6 +140,7 @@ class OAuthService (
                 }
             }
             .bodyToMono(String::class.java)
+            .doOnError { e -> println("Error occurred while calling HH API: ${e.message}") }
             .block()
 
 

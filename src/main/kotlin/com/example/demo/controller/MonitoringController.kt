@@ -25,15 +25,15 @@ class MonitoringController(
 
         try {
             request.readJson(message.value())
-             if(oauthService.userAuthInHH(request)) {
-                 response.status = HttpStatus.OK
-                 kafkaProducer.sendMessage("response", message.key(), response.toJson())
-                 recruiter.startMonitoringVacancies(request)
+            if(oauthService.userAuthInHH(request)) {
+                response.status = HttpStatus.OK
+                kafkaProducer.sendMessage("response", message.key(), response.toJson())
+                recruiter.startMonitoringVacancies(request)
 //                 oauthService.refreshAccessToken(request)
-             } else {
-                 response.message = "login hh.ru"
-                 response.status = HttpStatus.UNAUTHORIZED
-             }
+            } else {
+                response.message = "login hh.ru"
+                response.status = HttpStatus.UNAUTHORIZED
+            }
         } catch (e:Exception) {
             response.message = e.message.toString()
             response.status = HttpStatus.BAD_REQUEST
@@ -44,9 +44,9 @@ class MonitoringController(
 
     @KafkaListener(topics = ["stop"], containerFactory = "kafkaListenerAuthService")
     fun stopMonitoring(message: ConsumerRecord<String, String>) {
-         try {
-            recruiter.stopMonitoringVacancies()
-            oauthService.stopRefreshAccessToken()
+        try {
+//            recruiter.stopMonitoringVacancies()
+//            oauthService.stopRefreshAccessToken()
         } catch (e:Exception){
 
         } finally {

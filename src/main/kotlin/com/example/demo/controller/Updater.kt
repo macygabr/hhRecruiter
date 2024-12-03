@@ -14,9 +14,9 @@ class Updater(private val hhoAuthRepository: HHOAuthRepository) {
     fun updateToken(message: ConsumerRecord<String, String>) {
         try {
             val response = AuthenticationServerResponse().readJson(message.value())
-            val data = hhoAuthRepository.findByUserId(response.userId)
+            val data = hhoAuthRepository.findByUserId(response.userId)?:throw RuntimeException("User not found")
             data.token = response.token
-            System.out.println("Updating hhoauth: ${data.id} ${data.token}")
+            println("Updating hhoauth: ${data.id} ${data.token}")
             hhoAuthRepository.save(data)
         } catch (e:Exception){
             println(e.message)

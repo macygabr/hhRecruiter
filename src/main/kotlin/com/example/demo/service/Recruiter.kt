@@ -1,20 +1,24 @@
 package com.example.demo.service
 
+
 import com.example.demo.entity.AuthenticationServerResponse
 import com.example.demo.entity.Request
 import com.example.demo.entity.Response
+import com.example.demo.entity.HHOAuth
 import com.example.demo.repository.HHOAuthRepository
 import com.example.demo.repository.VacancyRepository
+import org.json.JSONObject
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
+import reactor.core.publisher.Mono
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
 @Service
-class Recruiter(private val webClient: WebClient.Builder,  private val repository: VacancyRepository, private val hhOAuthRepository: HHOAuthRepository)  {
+class Recruiter(private val webClient: WebClient.Builder,  private val repository: VacancyRepository, private val hhOAuthRepository: HHOAuthRepository) {
     private val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
     private var scheduledTask: ScheduledFuture<*>? = null
 
@@ -35,15 +39,10 @@ class Recruiter(private val webClient: WebClient.Builder,  private val repositor
         )
     }
 
-    fun stopMonitoringVacancies() {
-        scheduledTask?.cancel(true)
-        scheduledTask = null
-        println("Мониторинг вакансий остановлен")
-    }
 
     private fun monitorVacancies(data: Request) {
         println("Запрос на мониторинг вакансий: $data")
-        val accessToken = hhOAuthRepository.findByToken(data.authorizationHeader).access_token
+        val accessToken = hhOAuthRepository.findByToken(data.authorizationHeader)?.access_token
             ?: throw RuntimeException("login hh.ru")
         println("Найден пользователь: $accessToken")
         val vacancies = repository.getVacancies(accessToken)
@@ -64,17 +63,35 @@ class Recruiter(private val webClient: WebClient.Builder,  private val repositor
         }
     }
 
-    fun applyToVacancy(data: Request, vacancyId: String, resumeId: String): String? {
-        val apiUrl = "https://api.hh.ru/negotiations?vacancy_id=$vacancyId&resume_id=$resumeId"
 
-        val accessToken = hhOAuthRepository.findByToken(data.authorizationHeader).access_token
-        return webClient.build()
-            .post()
-            .uri(apiUrl)
-            .header("Authorization", "Bearer $accessToken")
-            .header("Content-Type", contentType)
-            .retrieve()
-            .bodyToMono(String::class.java)
-            .block()
+        fun applyToVacancy(data: Request, vacancyId: String, resumeId: String): String? {
+            val apiUrl = "https://api.hh.ru/negotiations?vacancy_id=$vacancyId&resume_id=$resumeId"
+
+            val accessToken = hhOAuthRepository.findByToken(data.authorizationHeader)?.access_token
+
+            return webClient.build()
+                .post()
+                .uri(apiUrl)
+                .header("Authorization", "Bearer $accessToken")
+                .header("Content-Type", contentType)
+                .retrieve()
+                .onStatus({ it.isError }) { response ->
+                    response.bodyToMono(String::class.java).flatMap { errorBody ->
+                        val jsonObject = JSONObject(errorBody)
+                        val description = jsonObject.optString("description", "Неизвестная ошибка")
+                        Mono.error(RuntimeException(description))
+                    }
+                }
+                .bodyToMono(String::class.java)
+                .block()
+        }
+
+
+    fun stopMonitoringVacancies(token: String) {
+        val hhOAuth = hhOAuthRepository.findByToken(token) ?: throw RuntimeException("User not found")
+        hhOAuthRepository.save(hhOAuth)
+        scheduledTask?.cancel(true)
+        scheduledTask = null
+        println("Мониторинг вакансий остановлен")
     }
 }
