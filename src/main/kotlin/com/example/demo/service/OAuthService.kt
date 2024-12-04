@@ -1,13 +1,14 @@
 package com.example.demo.service
 
+import com.example.demo.entity.*
 import com.example.demo.repository.HHOAuthRepository
-import com.example.demo.entity.AuthenticationServerResponse
-import com.example.demo.entity.HHOAuth
-import com.example.demo.entity.Request
-import com.example.demo.entity.Response
 import org.json.JSONException
 import org.json.JSONObject
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.dao.EmptyResultDataAccessException
+import org.springframework.data.crossstore.ChangeSetPersister
+import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.BodyInserters
@@ -45,19 +46,18 @@ class OAuthService (
         return "https://hh.ru/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUrl}"
     }
 
-
-    fun status(request: Request): HHOAuth? {
-        return hhOAuthRepository.findByToken(request.authorizationHeader)
+    fun status(request: Request): HHOAuth {
+        return hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
     }
 
-    fun userAuthInHH(request:  Request):Boolean {
-        val hhoauth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw RuntimeException("User not found")
-        return hhoauth.access_token!=null && hhoauth.refresh_token !=null
+    fun userAuthInHH(request:  Request) {
+        val hhoauth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
+        if(hhoauth.access_token==null || hhoauth.refresh_token ==null) throw HttpException(HttpStatus.FORBIDDEN, "login hh.ru")
     }
     fun callback(request:Request) {
         if(request.code == null) throw RuntimeException("code is null")
         val tokenResponse = getAccessToken(clientId, clientSecret, request.code!!, redirectUri)
-        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw RuntimeException("User not found")
+        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
 
         hhOAuth.access_token = tokenResponse.accessToken
         hhOAuth.refresh_token = tokenResponse.refreshToken
@@ -68,7 +68,7 @@ class OAuthService (
     fun refreshAccessToken(request: Request) {
         println("Запуск обновения токена...")
 
-        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw RuntimeException("User not found")
+        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
         val refreshToken = hhOAuth.refresh_token
         scheduledTask = hhOAuth.expiresIn?.let { expiresIn ->
             scheduler.scheduleAtFixedRate(
@@ -105,7 +105,7 @@ class OAuthService (
     }
 
 
-    fun stopRefreshAccessToken(token:String){
+    fun stopRefreshAccessToken(request: Request){
         scheduledTask?.cancel(true)
         scheduledTask = null
     }

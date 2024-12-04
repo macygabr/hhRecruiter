@@ -7,47 +7,34 @@ import com.example.demo.entity.HHOAuth
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Repository
 import org.springframework.web.reactive.function.client.WebClient
+import java.io.Serializable
+import java.time.Duration
+import java.util.concurrent.ConcurrentHashMap
 
 @Repository
 class VacancyRepository(private val webClient: WebClient.Builder) {
 
-    @Value("\${vacancy.query}")
-    private val query: String = ""
-
-    @Value("\${vacancy.level}")
-    private val experienceLevel: String = ""
-
-
-    private val applyVacanciesList = mutableListOf<String>()
+    private val applyVacanciesList = HashSet<String>()
 
     @Value("\${content.type}")
     private val contentType: String = ""
 
 
-    fun getVacancies(accessToken:String): List<Vacancy> {
+    fun getVacancies(accessToken: String): ConcurrentHashMap<String,Vacancy> {
         val apiUrl = "https://api.hh.ru/vacancies"
-        val vacanciesList = mutableListOf<Vacancy>()
+        val vacanciesList = ConcurrentHashMap<String, Vacancy>()
         var iterations= 0
-        System.err.println("Start search ApplyVacancies...")
+
         findApplyVacancies(accessToken)
         System.err.println("Start search vacancies...")
         while (vacanciesList.size < 200 && iterations < 20) {
-            val response = webClient.build()
-                .get()
-                .uri(apiUrl)
-                .header("Authorization", "Bearer $accessToken")
-                .header("Content-Type", contentType)
-                .retrieve()
-                .bodyToMono(Map::class.java)
-                .block()
+            val response = createResponse(apiUrl, accessToken)
 
             response?.get("items")?.let { items ->
                 (items as List<Map<*, *>>).forEach { item ->
                     val vacancy = readItem(item)
                     if(correctVacancy(vacancy)) {
-                        vacanciesList.add(vacancy)
-                    } else {
-                        println("уже откликнулся на ${vacancy.url}")
+                        vacanciesList[vacancy.id] = vacancy
                     }
                 }
             }
@@ -56,7 +43,7 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
         return vacanciesList
     }
 
-    private fun readItem(item: Map<*, *>) : Vacancy{
+    private fun readItem(item: Map<*, *>) : Vacancy {
         val id = item["id"] as? String ?: throw IllegalArgumentException("Id cannot be null")
         val title = item["title"] as? String ?: "title is null"
         val salary = item["salary"] as? String ?: "salary is null"
@@ -67,35 +54,51 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
     }
 
     private fun correctVacancy(vacancy: Vacancy): Boolean {
-        println(vacancy)
         if(vacancy.responseLetterRequired) return false
         if(applyVacanciesList.contains(vacancy.id)) return false
         return true
     }
 
-    fun findApplyVacancies(accessToken:String){
-//        "found": 2254,
-//        "pages": 113,
-//        "page": 0,
-//        "per_page": 20
-        val apiUrl = "https://api.hh.ru/negotiations"
+    private fun findApplyVacancies(accessToken:String){
+        System.err.println("Start search ApplyVacancies...")
+        var totalPages = 1
+        var perPage = 20
+        val baseUrl = "https://api.hh.ru/negotiations"
 
+        val responseParam = createResponse(baseUrl,accessToken)
+        responseParam?.get("per_page")?.let { items ->
+            perPage = items as Int
+        }
+        responseParam?.get("pages")?.let { items ->
+            totalPages = items as Int
+        }
 
+        for (page in 0 ..totalPages) {
+            val url = "$baseUrl?page=$page&per_page=$perPage"
+            println("page $page from $totalPages")
+            val response = createResponse(url,accessToken)
+            response?.get("items")?.let { items ->
+                (items as List<Map<*, *>>).forEach { item ->
+                    val id = item["id"] as? String
+                    if (id != null) {
+                        applyVacanciesList.add(id)
+                    }
+                }
+            }
+        }
+        System.err.println("total ApplyVacancies: ${applyVacanciesList.size}")
+    }
 
+    private fun createResponse(url:String, accessToken:String): Map<*, *>? {
         val response = webClient.build()
             .get()
-            .uri(apiUrl)
+            .uri(url)
             .header("Authorization", "Bearer $accessToken")
             .header("Content-Type", contentType)
             .retrieve()
             .bodyToMono(Map::class.java)
-            .block()
+            .timeout(Duration.ofSeconds(10))
 
-        response?.get("items")?.let { items ->
-            (items as List<Map<*, *>>).forEach { item ->
-                val vacancy = readItem(item)
-                    applyVacanciesList.add(vacancy.id)
-            }
-        }
+        return response.block()
     }
 }

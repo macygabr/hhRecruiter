@@ -13,7 +13,11 @@ data class Request(
     var authorizationHeader: String = "",
 
     @JsonProperty("code")
-    var code: String? = null
+    var code: String? = null,
+
+    @JsonProperty("query")
+    var query: String? = null
+
 ){
     fun readJson(json: String):Request {
         val objectMapper = ObjectMapper()
@@ -22,9 +26,14 @@ data class Request(
             val token: String = tempResponse.authorizationHeader.split(" ")[1]
             this.authorizationHeader = token
             this.code = tempResponse.code
+            this.query =tempResponse.query
         } catch (e: Exception) {
             throw RuntimeException("Failed to parse JSON: ${e.message}")
         }
         return this
+    }
+
+    fun checkToken():String{
+        return ""
     }
 }

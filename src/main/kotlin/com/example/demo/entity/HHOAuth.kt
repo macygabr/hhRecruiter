@@ -24,5 +24,14 @@ data class HHOAuth(
     @Column(unique = true)
     var refresh_token: String? = null,
 
-    var expiresIn: Int? = null
-)
+    var expiresIn: Int? = null,
+
+    @Column(unique = true)
+    var resumeId: String? = null
+
+){
+    fun toDTO() : String{
+        return ""
+    }
+
+}

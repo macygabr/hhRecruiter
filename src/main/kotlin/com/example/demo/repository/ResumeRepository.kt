@@ -7,18 +7,20 @@ import com.example.demo.entity.Resume
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Repository
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.http.HttpStatus
+import java.util.concurrent.ConcurrentHashMap
 
 @Repository
 class ResumeRepository(
         private val webClient: WebClient.Builder
 ) {
-    private val resumesList = mutableListOf<ResumeDTO>()
+    private val resumesList = HashMap<String, Resume>()
 
-    fun getResumes(hhOAuth: HHOAuth): List<ResumeDTO> {
+    fun getResumes(accessToken: String): HashMap<String, Resume> {
         val response = webClient.build()
                 .get()
                 .uri("https://api.hh.ru/resumes/mine")
-                .header("Authorization", "Bearer ${hhOAuth.access_token}")
+                .header("Authorization", "Bearer $accessToken")
                 .header("Content-Type", "application/json")
                 .retrieve()
                 .bodyToMono(Map::class.java)
@@ -29,11 +31,10 @@ class ResumeRepository(
             (items as List<Map<*, *>>).forEach { item ->
                 val id = item["id"] as? String ?: throw IllegalArgumentException("Resume ID cannot be null")
                 val title = item["title"] as? String ?: throw IllegalArgumentException("Resume ID cannot be null")
-                resumesList.add(ResumeDTO(id, title))
+                resumesList[id] = Resume(id, title)
             }
         }
 
-        println("Полученное резюме: ${resumesList.first()}")
         return resumesList
     }
 }

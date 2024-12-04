@@ -4,7 +4,6 @@ import jakarta.persistence.*
 import lombok.AllArgsConstructor
 import lombok.NoArgsConstructor
 
-
 @Entity
 @Table(name = "filter")
 @NoArgsConstructor
@@ -16,5 +15,5 @@ class Filter {
 
     var experienceLevel:String = ""
 
-    var tags: Array<String> = emptyArray<String>()
+    var query: String = ""
 }

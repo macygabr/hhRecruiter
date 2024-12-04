@@ -1,9 +1,11 @@
 package com.example.demo.controller
 
 import com.example.demo.entity.AuthenticationServerResponse
+import com.example.demo.entity.HttpException
 import com.example.demo.repository.HHOAuthRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.springframework.http.HttpStatus
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.stereotype.Service
 
@@ -14,7 +16,7 @@ class Updater(private val hhoAuthRepository: HHOAuthRepository) {
     fun updateToken(message: ConsumerRecord<String, String>) {
         try {
             val response = AuthenticationServerResponse().readJson(message.value())
-            val data = hhoAuthRepository.findByUserId(response.userId)?:throw RuntimeException("User not found")
+            val data = hhoAuthRepository.findByUserId(response.userId)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
             data.token = response.token
             println("Updating hhoauth: ${data.id} ${data.token}")
             hhoAuthRepository.save(data)
