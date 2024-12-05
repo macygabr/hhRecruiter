@@ -1,9 +1,8 @@
 package com.example.demo.service
 
-import com.example.demo.dto.ResumeDTO
-import com.example.demo.entity.HttpException
-import com.example.demo.entity.Request
-import com.example.demo.entity.Resume
+import com.example.demo.models.HttpException
+import com.example.demo.models.requests.Request
+import com.example.demo.models.Resume
 import com.example.demo.repository.HHOAuthRepository
 import com.example.demo.repository.ResumeRepository
 import org.springframework.http.HttpStatus
@@ -15,7 +14,7 @@ class ResumeService(
         private val resumeRepository: ResumeRepository
 ) {
 
-    fun setResume(request:Request, resumeId: String) {
+    fun setResume(request: Request, resumeId: String) {
         val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "Token invalid")
         val accessToken = hhOAuth.access_token ?: throw HttpException(HttpStatus.FORBIDDEN, "Login hh.ru")
 
@@ -26,7 +25,7 @@ class ResumeService(
         hhOAuthRepository.save(hhOAuth)
     }
 
-    fun getResume(request:Request) : Resume {
+    fun getResume(request: Request) : Resume {
         val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "Token invalid")
         val accessToken = hhOAuth.access_token ?: throw HttpException(HttpStatus.FORBIDDEN, "Login hh.ru")
 

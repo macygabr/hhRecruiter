@@ -1,4 +1,4 @@
-package com.example.demo.entity
+package com.example.demo.models
 
 class Resume (
         val id: String = "",

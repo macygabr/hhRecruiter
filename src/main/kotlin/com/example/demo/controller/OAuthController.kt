@@ -1,15 +1,14 @@
 package com.example.demo.controller
 
 
-import com.example.demo.entity.Request
-import com.example.demo.entity.Response
+import com.example.demo.models.requests.Request
+import com.example.demo.models.requests.RequestWithCode
+import com.example.demo.models.Response
 import com.example.demo.service.OAuthService
 import com.example.demo.service.kafka.KafkaProducerService
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
 import org.springframework.kafka.annotation.KafkaListener
 
 @RestController
@@ -37,7 +36,7 @@ class OAuthController(
     @KafkaListener(topics = ["callback"], containerFactory = "kafkaListenerAuthService")
     fun callback(message: ConsumerRecord<String, String>) {
         val response = Response()
-        val request = Request()
+        val request = RequestWithCode()
 
         try {
             request.readJson(message.value())

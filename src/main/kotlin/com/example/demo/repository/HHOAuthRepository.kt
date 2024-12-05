@@ -1,6 +1,6 @@
 package com.example.demo.repository
 
-import com.example.demo.entity.HHOAuth
+import com.example.demo.models.HHOAuth
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface HHOAuthRepository : JpaRepository<HHOAuth, Long> {

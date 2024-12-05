@@ -1,13 +1,12 @@
 package com.example.demo.repository
 
 
-import com.example.demo.entity.Vacancy
-import com.example.demo.dto.VacancyDTO
-import com.example.demo.entity.HHOAuth
+import com.example.demo.models.*
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Repository
 import org.springframework.web.reactive.function.client.WebClient
-import java.io.Serializable
+import reactor.core.publisher.Mono
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 
@@ -15,20 +14,25 @@ import java.util.concurrent.ConcurrentHashMap
 class VacancyRepository(private val webClient: WebClient.Builder) {
 
     private val applyVacanciesList = HashSet<String>()
+    private var accessToken: String = ""
 
     @Value("\${content.type}")
     private val contentType: String = ""
 
 
-    fun getVacancies(accessToken: String): ConcurrentHashMap<String,Vacancy> {
+    fun getVacancies(accessToken:String, filter: Filter): ConcurrentHashMap<String,Vacancy> {
+        this.accessToken = accessToken
+
         val apiUrl = "https://api.hh.ru/vacancies"
+        val urlWithFilters = "$apiUrl?${filter.toQueryString()}"
+
         val vacanciesList = ConcurrentHashMap<String, Vacancy>()
         var iterations= 0
 
         findApplyVacancies(accessToken)
-        System.err.println("Start search vacancies...")
-        while (vacanciesList.size < 200 && iterations < 20) {
-            val response = createResponse(apiUrl, accessToken)
+        System.err.println("Start search vacancies by $urlWithFilters")
+        while (vacanciesList.size < 200 || iterations < 20) {
+            val response = createResponse(urlWithFilters, accessToken)
 
             response?.get("items")?.let { items ->
                 (items as List<Map<*, *>>).forEach { item ->
@@ -60,12 +64,13 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
     }
 
     private fun findApplyVacancies(accessToken:String){
-        System.err.println("Start search ApplyVacancies...")
         var totalPages = 1
         var perPage = 20
         val baseUrl = "https://api.hh.ru/negotiations"
 
         val responseParam = createResponse(baseUrl,accessToken)
+        System.err.println("Start search ApplyVacancies...")
+
         responseParam?.get("per_page")?.let { items ->
             perPage = items as Int
         }
@@ -89,16 +94,21 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
         System.err.println("total ApplyVacancies: ${applyVacanciesList.size}")
     }
 
-    private fun createResponse(url:String, accessToken:String): Map<*, *>? {
+    private fun createResponse(url: String, accessToken: String): Map<*, *>? {
         val response = webClient.build()
             .get()
             .uri(url)
             .header("Authorization", "Bearer $accessToken")
             .header("Content-Type", contentType)
             .retrieve()
+            .onStatus({ status -> status.isError }) { response ->
+                System.err.println("Error response: ${response.statusCode()}")
+                Mono.error(Exception("Request failed with status ${response.statusCode()}"))
+            }
             .bodyToMono(Map::class.java)
             .timeout(Duration.ofSeconds(10))
 
         return response.block()
     }
+
 }

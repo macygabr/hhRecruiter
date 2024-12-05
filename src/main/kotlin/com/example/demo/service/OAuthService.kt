@@ -1,13 +1,12 @@
 package com.example.demo.service
 
-import com.example.demo.entity.*
+import com.example.demo.models.*
+import com.example.demo.models.requests.Request
+import com.example.demo.models.requests.RequestWithCode
 import com.example.demo.repository.HHOAuthRepository
 import org.json.JSONException
 import org.json.JSONObject
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.dao.EmptyResultDataAccessException
-import org.springframework.data.crossstore.ChangeSetPersister
-import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
@@ -50,11 +49,12 @@ class OAuthService (
         return hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
     }
 
-    fun userAuthInHH(request:  Request) {
+    fun checkUserAuth(request: Request) {
         val hhoauth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
         if(hhoauth.access_token==null || hhoauth.refresh_token ==null) throw HttpException(HttpStatus.FORBIDDEN, "login hh.ru")
     }
-    fun callback(request:Request) {
+
+    fun callback(request: RequestWithCode) {
         if(request.code == null) throw RuntimeException("code is null")
         val tokenResponse = getAccessToken(clientId, clientSecret, request.code!!, redirectUri)
         val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")

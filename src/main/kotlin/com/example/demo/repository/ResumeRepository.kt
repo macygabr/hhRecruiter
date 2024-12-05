@@ -1,14 +1,8 @@
 package com.example.demo.repository
 
-import com.example.demo.dto.ResumeDTO
-import com.example.demo.dto.VacancyDTO
-import com.example.demo.entity.HHOAuth
-import com.example.demo.entity.Resume
-import org.springframework.beans.factory.annotation.Value
+import com.example.demo.models.Resume
 import org.springframework.stereotype.Repository
 import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.http.HttpStatus
-import java.util.concurrent.ConcurrentHashMap
 
 @Repository
 class ResumeRepository(

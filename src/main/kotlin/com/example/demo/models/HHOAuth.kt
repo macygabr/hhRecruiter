@@ -1,8 +1,6 @@
-package com.example.demo.entity
+package com.example.demo.models
 
 import jakarta.persistence.*
-import lombok.AllArgsConstructor
-import lombok.NoArgsConstructor
 
 
 @Entity
@@ -27,7 +25,11 @@ data class HHOAuth(
     var expiresIn: Int? = null,
 
     @Column(unique = true)
-    var resumeId: String? = null
+    var resumeId: String? = null,
+
+    @OneToOne(cascade = [CascadeType.ALL])
+    @JoinColumn(name = "filter_id")
+    var filter: Filter = Filter()
 
 ){
     fun toDTO() : String{

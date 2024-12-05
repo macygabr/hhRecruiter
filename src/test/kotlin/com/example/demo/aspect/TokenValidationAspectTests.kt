@@ -3,7 +3,7 @@ package com.example.demo.aspect
 
 import com.example.demo.controller.MonitoringController
 import com.example.demo.controller.OAuthController
-import com.example.demo.entity.HHOAuth
+import com.example.demo.models.HHOAuth
 import com.example.demo.repository.HHOAuthRepository
 import com.example.demo.service.OAuthService
 import com.example.demo.service.ResumeService

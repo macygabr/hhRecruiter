@@ -1,7 +1,9 @@
 package com.example.demo.service
 
 
-import com.example.demo.entity.*
+import com.example.demo.models.*
+import com.example.demo.models.requests.Request
+import com.example.demo.models.requests.RequestWithFilter
 import com.example.demo.repository.HHOAuthRepository
 import com.example.demo.repository.VacancyRepository
 import org.json.JSONObject
@@ -10,7 +12,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
-import java.awt.SystemColor
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
@@ -28,13 +29,26 @@ class Recruiter(private val webClient: WebClient.Builder,  private val repositor
 
     private var resume: Resume = Resume()
 
-    private var hhOAuth: HHOAuth = HHOAuth()
+    private var filter:Filter = Filter()
 
+    fun updateFilter(request:RequestWithFilter){
+        val hhOAuth = hhOAuthRepository.findByToken( request.authorizationHeader) ?: throw HttpException(HttpStatus.UNAUTHORIZED, "invalid token")
 
-    fun startMonitoringVacancies(request: Request) {
+//        hhOAuth.filter.copy(request.filter)
+        hhOAuth.filter.text = request.text
+        hhOAuth.filter.experienceLevel = request.level
+        hhOAuth.filter.area = request.area
 
-        hhOAuth = hhOAuthRepository.findByToken( request.authorizationHeader) ?: throw HttpException(HttpStatus.UNAUTHORIZED, "invalid token")
+        hhOAuthRepository.save(hhOAuth)
+    }
+
+    fun startMonitoringVacancies(request: RequestWithFilter) {
+        val hhOAuth = hhOAuthRepository.findByToken( request.authorizationHeader) ?: throw HttpException(HttpStatus.UNAUTHORIZED, "invalid token")
         accessToken = hhOAuth.access_token ?: throw HttpException(HttpStatus.FORBIDDEN, "login hh.ru")
+
+        this.filter.experienceLevel = request.level
+        this.filter.area = request.area
+        this.filter.text = request.text
 
         resume = resumeService.getResume(request)
 
@@ -47,7 +61,7 @@ class Recruiter(private val webClient: WebClient.Builder,  private val repositor
         )
     }
 
-    fun stopMonitoringVacancies() {
+    fun stopMonitoringVacancies(request: Request) {
         scheduledTask?.cancel(true)
         scheduledTask = null
         println("Мониторинг вакансий остановлен")
@@ -55,7 +69,7 @@ class Recruiter(private val webClient: WebClient.Builder,  private val repositor
 
 
     private fun monitorVacancies() {
-        val vacancies = repository.getVacancies(accessToken)
+        val vacancies = repository.getVacancies(accessToken, filter)
         println("Найдено вакансий: ${vacancies.size}")
         if (vacancies.isEmpty()) return
 

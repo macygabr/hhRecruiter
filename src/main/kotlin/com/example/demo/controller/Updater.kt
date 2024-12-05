@@ -1,9 +1,8 @@
 package com.example.demo.controller
 
-import com.example.demo.entity.AuthenticationServerResponse
-import com.example.demo.entity.HttpException
+import com.example.demo.models.AuthenticationServerResponse
+import com.example.demo.models.HttpException
 import com.example.demo.repository.HHOAuthRepository
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.http.HttpStatus
 import org.springframework.kafka.annotation.KafkaListener
