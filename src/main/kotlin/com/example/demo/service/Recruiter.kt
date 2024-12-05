@@ -36,7 +36,7 @@ class Recruiter(private val webClient: WebClient.Builder,  private val repositor
         hhOAuth = hhOAuthRepository.findByToken( request.authorizationHeader) ?: throw HttpException(HttpStatus.UNAUTHORIZED, "invalid token")
         accessToken = hhOAuth.access_token ?: throw HttpException(HttpStatus.FORBIDDEN, "login hh.ru")
 
-        resume = resumeService.searchResume(request)
+        resume = resumeService.getResume(request)
 
         println("Запуск мониторинга вакансий... $request")
         scheduledTask = scheduler.scheduleAtFixedRate(

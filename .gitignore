@@ -1,14 +1,20 @@
-
-target/
-
 ### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
+.idea
 *.iws
 *.iml
 *.ipr
+
+# Ignore Gradle GUI config
+gradle-app.setting
+
+# Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
+!gradle-wrapper.jar
+
+# Avoid ignore Gradle wrappper properties
+!gradle-wrapper.properties
+
+# Cache of project
+.gradletasknamecache
 
 ### Eclipse ###
 .apt_generated
@@ -25,9 +31,8 @@ target/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+**/build/
+!src/**/build/
 
 ### VS Code ###
 .vscode/
@@ -37,9 +42,7 @@ build/
 
 ### My list ###
 hibernate.cfg.xml
-.idea
-.gradle
-/my-app/node_modules/*
 application.properties
 logback-spring.xml
 node_modules/
+target

@@ -26,6 +26,14 @@ class ResumeService(
         hhOAuthRepository.save(hhOAuth)
     }
 
+    fun getResume(request:Request) : Resume {
+        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "Token invalid")
+        val accessToken = hhOAuth.access_token ?: throw HttpException(HttpStatus.FORBIDDEN, "Login hh.ru")
+
+        val resumesList = resumeRepository.getResumes(accessToken)
+        return resumesList[hhOAuth.resumeId]?:throw RuntimeException("ResumeId invalid")
+    }
+
     fun getAllResume(){
 
     }
