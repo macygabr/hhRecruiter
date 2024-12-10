@@ -17,7 +17,7 @@ class OAuthController(
     private val oauthService: OAuthService
 ) {
 
-    @KafkaListener(topics = ["registry"], containerFactory = "kafkaListenerAuthService")
+    @KafkaListener(topics = ["getLink"], containerFactory = "kafkaListenerAuthService")
     fun getOAuthURL(message: ConsumerRecord<String, String>) {
         val response = Response()
         val request = Request()
@@ -33,8 +33,8 @@ class OAuthController(
         }
     }
 
-    @KafkaListener(topics = ["callback"], containerFactory = "kafkaListenerAuthService")
-    fun callback(message: ConsumerRecord<String, String>) {
+    @KafkaListener(topics = ["registry"], containerFactory = "kafkaListenerAuthService")
+    fun registry(message: ConsumerRecord<String, String>) {
         val response = Response()
         val request = RequestWithCode()
 

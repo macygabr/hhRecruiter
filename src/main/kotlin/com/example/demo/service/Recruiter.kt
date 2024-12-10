@@ -25,34 +25,20 @@ class Recruiter(private val webClient: WebClient.Builder,  private val repositor
     @Value("\${content.type}")
     private val contentType: String = ""
 
-    private var accessToken: String = ""
+    private var resume:Resume? = null
+    private var accessToken:String = ""
 
-    private var resume: Resume = Resume()
 
-    private var filter:Filter = Filter()
-
-    fun updateFilter(request:RequestWithFilter){
-        val hhOAuth = hhOAuthRepository.findByToken( request.authorizationHeader) ?: throw HttpException(HttpStatus.UNAUTHORIZED, "invalid token")
-
-//        hhOAuth.filter.copy(request.filter)
-        hhOAuth.filter.text = request.text
-        hhOAuth.filter.experienceLevel = request.level
+    fun updateFilter(filter:Filter){
+        filter.text = request.text
+        filter.experienceLevel = request.
         hhOAuth.filter.area = request.area
 
-        hhOAuthRepository.save(hhOAuth)
+        hhOAuthRepository.save(filter)
     }
 
-    fun startMonitoringVacancies(request: RequestWithFilter) {
-        val hhOAuth = hhOAuthRepository.findByToken( request.authorizationHeader) ?: throw HttpException(HttpStatus.UNAUTHORIZED, "invalid token")
-        accessToken = hhOAuth.access_token ?: throw HttpException(HttpStatus.FORBIDDEN, "login hh.ru")
-
-        this.filter.experienceLevel = request.level
-        this.filter.area = request.area
-        this.filter.text = request.text
-
-        resume = resumeService.getResume(request)
-
-        println("Запуск мониторинга вакансий... $request")
+    fun startMonitoringVacancies() {
+        println("Запуск мониторинга вакансий... ")
         scheduledTask = scheduler.scheduleAtFixedRate(
             { monitorVacancies() },
             0,
@@ -69,7 +55,14 @@ class Recruiter(private val webClient: WebClient.Builder,  private val repositor
 
 
     private fun monitorVacancies() {
-        val vacancies = repository.getVacancies(accessToken, filter)
+        val hhOAuth = hhOAuthRepository.findByToken( request.authorizationHeader) ?: throw HttpException(HttpStatus.UNAUTHORIZED, "invalid token")
+
+        accessToken = hhOAuth.access_token ?: throw HttpException(HttpStatus.FORBIDDEN, "login hh.ru")
+        val filter = hhOAuth.filter
+
+        resume = resumeService.getResume(request)
+
+        val vacancies = repository.getUnappliedVacancies(accessToken, filter)
         println("Найдено вакансий: ${vacancies.size}")
         if (vacancies.isEmpty()) return
 
@@ -90,7 +83,7 @@ class Recruiter(private val webClient: WebClient.Builder,  private val repositor
     private fun applyToVacancy(vacancyId: String): String? {
         return webClient.build()
             .post()
-            .uri("https://api.hh.ru/negotiations?vacancy_id=$vacancyId&resume_id=${resume.id}")
+            .uri("https://api.hh.ru/negotiations?vacancy_id=$vacancyId&resume_id=${resume?.id}")
             .header("Authorization", "Bearer $accessToken")
             .header("Content-Type", contentType)
             .retrieve()

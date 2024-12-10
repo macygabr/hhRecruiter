@@ -28,7 +28,7 @@ class RequestWithFilter: Request()  {
             this.text = requestJson?.get("text")?.asText()
             this.level = requestJson?.get("level")?.asText()
             this.area = requestJson?.get("area")?.asText()
-            println("Text: $text, Level: $level, Area: $area")
+
         } catch (e: Exception) {
             throw RuntimeException("Failed to parse JSON: ${e.message}")
         }

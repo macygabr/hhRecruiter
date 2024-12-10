@@ -31,9 +31,6 @@ class TokenValidationAspectTests {
     lateinit var mockMvc: MockMvc
 
     @MockBean
-    private val vacancyService: VacancyService? = null
-
-    @MockBean
     private val oauthService: OAuthService? = null
 
     @MockBean
@@ -44,9 +41,6 @@ class TokenValidationAspectTests {
 
     @MockBean
     private val hhOAuthRepository: HHOAuthRepository? = null
-
-    @SpyBean
-    lateinit var tokenValidationAspect: TokenValidationAspect
 
     @Test
     fun `invalid token`() {

@@ -14,24 +14,25 @@ import java.util.concurrent.ConcurrentHashMap
 class VacancyRepository(private val webClient: WebClient.Builder) {
 
     private val applyVacanciesList = HashSet<String>()
-    private var accessToken: String = ""
+//    private var accessToken: String = ""
 
     @Value("\${content.type}")
     private val contentType: String = ""
 
-
-    fun getVacancies(accessToken:String, filter: Filter): ConcurrentHashMap<String,Vacancy> {
-        this.accessToken = accessToken
-
+//    fun getInvitedVacancies():ConcurrentHashMap<String,Vacancy> {
+//
+//        return null
+//    }
+    fun getUnappliedVacancies(accessToken:String, filter: Filter): ConcurrentHashMap<String,Vacancy> {
         val apiUrl = "https://api.hh.ru/vacancies"
         val urlWithFilters = "$apiUrl?${filter.toQueryString()}"
 
         val vacanciesList = ConcurrentHashMap<String, Vacancy>()
         var iterations= 0
 
-        findApplyVacancies(accessToken)
+        getAppliedVacancies(accessToken)
         System.err.println("Start search vacancies by $urlWithFilters")
-        while (vacanciesList.size < 200 || iterations < 20) {
+        while (vacanciesList.size < 200 && iterations < 20) {
             val response = createResponse(urlWithFilters, accessToken)
 
             response?.get("items")?.let { items ->
@@ -42,6 +43,7 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
                     }
                 }
             }
+            println("Search vacancies by $iterations: ${vacanciesList.size}")
             iterations++
         }
         return vacanciesList
@@ -63,7 +65,7 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
         return true
     }
 
-    private fun findApplyVacancies(accessToken:String){
+    private fun getAppliedVacancies(accessToken:String){
         var totalPages = 1
         var perPage = 20
         val baseUrl = "https://api.hh.ru/negotiations"

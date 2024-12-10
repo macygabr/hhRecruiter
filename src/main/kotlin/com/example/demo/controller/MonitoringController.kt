@@ -1,5 +1,6 @@
 package com.example.demo.controller
 
+import com.example.demo.models.Filter
 import com.example.demo.models.HttpException
 import com.example.demo.models.requests.Request
 import com.example.demo.models.Response
@@ -23,16 +24,15 @@ class MonitoringController(
     @KafkaListener(topics = ["start"], containerFactory = "kafkaListenerAuthService")
     fun startMonitoring(message: ConsumerRecord<String, String>) {
         val response = Response()
-        val request = RequestWithFilter()
-
         try {
             System.err.println(message.value())
-            request.readJson(message.value())
 
-            oauthService.checkUserAuth(request)
-            recruiter.updateFilter(request)
-            recruiter.startMonitoringVacancies(request)
-            oauthService.refreshAccessToken(request)
+            val filter = Filter()
+            filter.readJson(message.value())
+
+            recruiter.updateFilter(filter)
+            recruiter.startMonitoringVacancies(filter)
+            oauthService.refreshAccessToken(filter)
 
             response.status = HttpStatus.OK
             response.message = "OK"

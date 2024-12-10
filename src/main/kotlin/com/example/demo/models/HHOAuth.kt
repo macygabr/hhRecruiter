@@ -36,4 +36,8 @@ data class HHOAuth(
         return ""
     }
 
+    override fun toString(): String {
+        return "HHOAuth(resumeId=$resumeId, filter=$filter)"
+    }
+
 }
