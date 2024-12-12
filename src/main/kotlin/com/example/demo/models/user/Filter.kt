@@ -1,5 +1,6 @@
-package com.example.demo.models
+package com.example.demo.models.user
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.persistence.*
 import lombok.AllArgsConstructor
@@ -13,13 +14,15 @@ import lombok.NoArgsConstructor
 class Filter {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long = 0
-
+    val id: Long = 0
     var text: String? = null
-
     var experienceLevel: Experience? = null
+    var area: Int? = null
 
-    var area = 0
+    @JsonIgnore
+    @OneToOne
+    @JoinColumn(name = "user_id")
+    var user: User? = null
 
     fun readJson(json:String){
         val objectMapper = ObjectMapper()
@@ -41,6 +44,12 @@ class Filter {
         } else {
             ""
         }
+    }
+
+    fun copyFrom(other: Filter) {
+        this.text = other.text
+        this.experienceLevel = other.experienceLevel
+        this.area = other.area
     }
 
     override fun toString(): String {

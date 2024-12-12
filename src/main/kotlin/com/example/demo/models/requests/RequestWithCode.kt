@@ -2,21 +2,20 @@ package com.example.demo.models.requests
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
 import org.json.JSONObject
 
-
 @JsonIgnoreProperties(ignoreUnknown = true)
-open class Request(
+class RequestWithCode : Request() {
 
-    @JsonProperty("userId")
-    var userId: Long = 0L
-){
-    open fun readJson(json: String): Request {
+    @JsonProperty("code")
+    var code: String = ""
+
+    override fun readJson(json: String): Request {
+
         try {
             val jsonObject = JSONObject(json)
             this.userId = jsonObject.getLong("userId")
+            this.code = jsonObject.getString("code")
         } catch (e: Exception) {
             throw RuntimeException("Failed to parse JSON: ${e.message}")
         }

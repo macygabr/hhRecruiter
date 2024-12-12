@@ -1,39 +1,52 @@
 package com.example.demo.repository
 
-
-import com.example.demo.models.*
+import com.example.demo.models.user.Filter
+import com.example.demo.models.user.Vacancy
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Repository
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
-import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
+import java.time.Duration
 
 @Repository
 class VacancyRepository(private val webClient: WebClient.Builder) {
 
     private val applyVacanciesList = HashSet<String>()
-//    private var accessToken: String = ""
+    private var accessToken: String = ""
 
     @Value("\${content.type}")
     private val contentType: String = ""
 
-//    fun getInvitedVacancies():ConcurrentHashMap<String,Vacancy> {
-//
+//    fun getInvitedVacancies():ConcurrentHashMap<String, Vacancy> {
 //        return null
 //    }
-    fun getUnappliedVacancies(accessToken:String, filter: Filter): ConcurrentHashMap<String,Vacancy> {
+
+    fun getUnappliedVacancies(accessToken:String, filter: Filter): ConcurrentHashMap<String, Vacancy> {
         val apiUrl = "https://api.hh.ru/vacancies"
         val urlWithFilters = "$apiUrl?${filter.toQueryString()}"
-
         val vacanciesList = ConcurrentHashMap<String, Vacancy>()
-        var iterations= 0
-
         getAppliedVacancies(accessToken)
-        System.err.println("Start search vacancies by $urlWithFilters")
-        while (vacanciesList.size < 200 && iterations < 20) {
-            val response = createResponse(urlWithFilters, accessToken)
+
+        var totalPages = 1
+        var perPage = 20
+        val baseUrl = "https://api.hh.ru/negotiations"
+
+        val responseParam = createResponse(baseUrl,accessToken)
+        System.err.println("Start search ApplyVacancies...")
+
+        responseParam?.get("per_page")?.let { items ->
+            perPage = items as Int
+        }
+        responseParam?.get("pages")?.let { items ->
+            totalPages = items as Int
+        }
+
+        for (page in 0 ..totalPages){
+            if(vacanciesList.size >= 200) break
+            val url = "$urlWithFilters&page=$page&per_page=$perPage"
+            System.err.println(url)
+            val response = createResponse(url, accessToken)
 
             response?.get("items")?.let { items ->
                 (items as List<Map<*, *>>).forEach { item ->
@@ -43,8 +56,7 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
                     }
                 }
             }
-            println("Search vacancies by $iterations: ${vacanciesList.size}")
-            iterations++
+            println("Search vacancies by $page: ${vacanciesList.size}")
         }
         return vacanciesList
     }

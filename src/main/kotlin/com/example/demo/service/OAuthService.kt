@@ -1,11 +1,13 @@
 package com.example.demo.service
 
 import com.example.demo.models.*
+import com.example.demo.models.exceptions.NotFoundException
 import com.example.demo.models.requests.Request
 import com.example.demo.models.requests.RequestWithCode
-import com.example.demo.repository.HHOAuthRepository
-import org.json.JSONException
-import org.json.JSONObject
+import com.example.demo.models.user.HhAuthInfo
+import com.example.demo.repository.HhAuthInfoRepository
+import com.example.demo.repository.UserRepository
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -20,7 +22,8 @@ import java.util.concurrent.TimeUnit
 
 @Service
 class OAuthService (
-    private val hhOAuthRepository: HHOAuthRepository,
+    private val hhAuthInfoRepository: HhAuthInfoRepository,
+    private val userRepository: UserRepository,
     private val webClient: WebClient.Builder
 ){
 
@@ -41,67 +44,72 @@ class OAuthService (
 
     private val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
     private var scheduledTask: ScheduledFuture<*>? = null
+    private val objectMapper = ObjectMapper()
+
     fun getURL():String{
         return "https://hh.ru/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUrl}"
     }
 
-    fun status(request: Request): HHOAuth {
-        return hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
+    fun registry(userId: Long, code: String) {
+        val user = userRepository.findById(userId).orElseThrow {
+            throw NotFoundException("User not found")
+        }!!
+
+        val tokenResponse = getAccessToken(clientId, clientSecret, code, redirectUri)
+
+        if(user.hhAuthInfo == null){
+            user.hhAuthInfo = HhAuthInfo(
+                user = user,
+                access_token = tokenResponse.accessToken,
+                refresh_token = tokenResponse.refreshToken,
+                expiresIn = tokenResponse.expiresIn
+            )
+        } else {
+            user.hhAuthInfo!!.access_token = tokenResponse.accessToken
+            user.hhAuthInfo!!.refresh_token = tokenResponse.refreshToken
+            user.hhAuthInfo!!.expiresIn = tokenResponse.expiresIn
+        }
+        userRepository.save(user)
     }
 
-    fun checkUserAuth(request: Request) {
-        val hhoauth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
-        if(hhoauth.access_token==null || hhoauth.refresh_token ==null) throw HttpException(HttpStatus.FORBIDDEN, "login hh.ru")
-    }
 
-    fun callback(request: RequestWithCode) {
-        if(request.code == null) throw RuntimeException("code is null")
-        val tokenResponse = getAccessToken(clientId, clientSecret, request.code!!, redirectUri)
-        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
-
-        hhOAuth.access_token = tokenResponse.accessToken
-        hhOAuth.refresh_token = tokenResponse.refreshToken
-        hhOAuth.expiresIn=tokenResponse.expiresIn
-        hhOAuthRepository.save(hhOAuth)
-    }
-
-    fun refreshAccessToken(request: Request) {
+    fun refreshAccessToken(userId: Long) {
         println("Запуск обновения токена...")
 
-        val hhOAuth = hhOAuthRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
-        val refreshToken = hhOAuth.refresh_token
-        scheduledTask = hhOAuth.expiresIn?.let { expiresIn ->
-            scheduler.scheduleAtFixedRate(
-                {
-                    try {
-                        webClient.build()
-                            .post()
-                            .uri(refreshTokenUrl)
-                            .header("Content-Type", "application/x-www-form-urlencoded")
-                            .bodyValue("grant_type=refresh_token&refresh_token=$refreshToken&client_id=$clientId&client_secret=$clientSecret")
-                            .retrieve()
-                            .bodyToMono(String::class.java)
-                            .doOnError { e -> println("Ошибка при обращении к HH API: ${e.message}") }
-                            .onErrorReturn("")
-                            .map { response ->
-                                try {
-                                    val jsonResponse = JSONObject(response)
-                                    hhOAuth.access_token = jsonResponse.getString("access_token")
-                                    hhOAuthRepository.save(hhOAuth)
-                                } catch (jsonException: JSONException) {
-                                    println("Ошибка парсинга ответа: ${jsonException.message}")
-                                }
-                            }
-                            .subscribe()
-                    } catch (e: Exception) {
-                        println("Ошибка при обновлении токена: ${e.message}")
-                    }
-                },
-                    expiresIn.toLong(),
-                expiresIn.toLong(),
-                TimeUnit.SECONDS
-            )
-        }
+//        val HhAuthInfo = hhAuthInfoRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
+//        val refreshToken = HhAuthInfo.refresh_token
+//        scheduledTask = HhAuthInfo.expiresIn?.let { expiresIn ->
+//            scheduler.scheduleAtFixedRate(
+//                {
+//                    try {
+//                        webClient.build()
+//                            .post()
+//                            .uri(refreshTokenUrl)
+//                            .header("Content-Type", "application/x-www-form-urlencoded")
+//                            .bodyValue("grant_type=refresh_token&refresh_token=$refreshToken&client_id=$clientId&client_secret=$clientSecret")
+//                            .retrieve()
+//                            .bodyToMono(String::class.java)
+//                            .doOnError { e -> println("Ошибка при обращении к HH API: ${e.message}") }
+//                            .onErrorReturn("")
+//                            .map { response ->
+//                                try {
+//                                    val jsonResponse = JSONObject(response)
+//                                    HhAuthInfo.access_token = jsonResponse.getString("access_token")
+//                                    hhAuthInfoRepository.save(HhAuthInfo)
+//                                } catch (jsonException: JSONException) {
+//                                    println("Ошибка парсинга ответа: ${jsonException.message}")
+//                                }
+//                            }
+//                            .subscribe()
+//                    } catch (e: Exception) {
+//                        println("Ошибка при обновлении токена: ${e.message}")
+//                    }
+//                },
+//                    expiresIn.toLong(),
+//                expiresIn.toLong(),
+//                TimeUnit.SECONDS
+//            )
+//        }
     }
 
 
@@ -133,9 +141,9 @@ class OAuthService (
             .retrieve()
             .onStatus({ status -> status.is4xxClientError || status.is5xxServerError }) { response ->
                 response.bodyToMono(String::class.java).flatMap { errorBody ->
-                    val errorJson = JSONObject(errorBody)
-                    val error = errorJson.optString("error", "Unknown error")
-                    val errorDescription = errorJson.optString("error_description", "No description available")
+                    val jsonNode = objectMapper.readTree(errorBody)
+                    val error = jsonNode["error"]?.asText() ?: "Unknown error"
+                    val errorDescription = jsonNode["error_description"]?.asText() ?: "No description available"
                     Mono.error(IllegalStateException("Error: $error, Description: $errorDescription"))
                 }
             }
@@ -145,12 +153,12 @@ class OAuthService (
 
 
         return responseBody.let {
-            val json = JSONObject(it)
+            val json = objectMapper.readTree(it)
             OAuthTokenResponse(
-                accessToken = json.getString("access_token"),
-                tokenType = json.getString("token_type"),
-                refreshToken = json.getString("refresh_token"),
-                expiresIn = json.getInt("expires_in")
+                accessToken = json["access_token"]?.asText() ?: throw IllegalArgumentException("Access token cannot be null"),
+                tokenType = json["token_type"]?.asText() ?: throw IllegalArgumentException("Token type cannot be null"),
+                refreshToken = json["refresh_token"]?.asText() ?: throw IllegalArgumentException("Refresh token cannot be null"),
+                expiresIn = json["expires_in"]?.asInt() ?: throw IllegalArgumentException("Expires in cannot be null")
             )
         }
     }

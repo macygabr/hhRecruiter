@@ -1,6 +1,4 @@
-package com.example.demo.models
-
-import com.example.demo.dto.VacancyDTO
+package com.example.demo.models.user
 
 data class Vacancy(
     val id: String,
@@ -9,8 +7,4 @@ data class Vacancy(
     val responseLetterRequired: Boolean,
     val description: String,
     val url: String
-){
-    fun toDTO(): VacancyDTO {
-        return VacancyDTO(id, url)
-    }
-}
+)

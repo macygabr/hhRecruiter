@@ -1,34 +1,32 @@
 package com.example.demo.models.requests
 
+import com.example.demo.models.user.Experience
+import com.example.demo.models.user.Filter
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class RequestWithFilter: Request()  {
     @JsonProperty("text")
     var text: String? = null
 
     @JsonProperty("level")
-    var level: String? = null
+    var level: Experience? = null
 
     @JsonProperty("area")
-    var area: String?=null
+    var area: Int?=null
 
-    @JsonProperty("filter")
-    var filter: String? = null
+    val filter: Filter = Filter()
 
     override fun readJson(json: String): Request {
         val objectMapper = ObjectMapper()
         try {
             val tempResponse = objectMapper.readValue(json, RequestWithFilter::class.java)
-            val token: String = tempResponse.authorizationHeader.split(" ")[1]
-            this.authorizationHeader = token
-
-            val requestJson = tempResponse.filter?.let { objectMapper.readTree(it) }
-            this.text = requestJson?.get("text")?.asText()
-            this.level = requestJson?.get("level")?.asText()
-            this.area = requestJson?.get("area")?.asText()
-
+            filter.text = tempResponse.text
+            filter.experienceLevel = tempResponse.level
+            filter.area = tempResponse.area
         } catch (e: Exception) {
             throw RuntimeException("Failed to parse JSON: ${e.message}")
         }
