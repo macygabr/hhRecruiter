@@ -32,6 +32,7 @@ gradle-app.setting
 /nbdist/
 /.nb-gradle/
 **/build/
+!**/build/libs/hhRecruiter-0.0.1.jar
 !src/**/build/
 
 ### VS Code ###
