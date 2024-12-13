@@ -2,7 +2,9 @@ package com.example.demo.controller
 
 import com.example.demo.models.requests.Request
 import com.example.demo.models.requests.RequestWithCode
+import com.example.demo.models.requests.RequestWithFilter
 import com.example.demo.models.response.Response
+import com.example.demo.service.FilterService
 import com.example.demo.service.MonitoringService
 import com.example.demo.service.OAuthService
 import com.example.demo.service.kafka.KafkaProducerService
@@ -10,13 +12,15 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.http.HttpStatus
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.stereotype.Service
+import org.springframework.web.bind.annotation.RestController
 
-@Service
+@RestController
 class MonitoringController(
     private val oauthService: OAuthService,
     private val kafkaProducer: KafkaProducerService,
     private val monitoringService: MonitoringService
 ) {
+
     @KafkaListener(topics = ["start"], containerFactory = "kafkaListenerAuthService")
     fun startMonitoring(message: ConsumerRecord<String, String>) {
         val response = Response()

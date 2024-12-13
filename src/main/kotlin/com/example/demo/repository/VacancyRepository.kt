@@ -8,19 +8,16 @@ import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
 import java.util.concurrent.ConcurrentHashMap
 import java.time.Duration
+import kotlin.math.ceil
 
 @Repository
 class VacancyRepository(private val webClient: WebClient.Builder) {
 
     private val applyVacanciesList = HashSet<String>()
-    private var accessToken: String = ""
+    private val per_page = 100
 
     @Value("\${content.type}")
     private val contentType: String = ""
-
-//    fun getInvitedVacancies():ConcurrentHashMap<String, Vacancy> {
-//        return null
-//    }
 
     fun getUnappliedVacancies(accessToken:String, filter: Filter): ConcurrentHashMap<String, Vacancy> {
         val apiUrl = "https://api.hh.ru/vacancies"
@@ -28,29 +25,18 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
         val vacanciesList = ConcurrentHashMap<String, Vacancy>()
         getAppliedVacancies(accessToken)
 
-        var totalPages = 1
-        var perPage = 20
-        val baseUrl = "https://api.hh.ru/negotiations"
+        val found = getSizeResult(urlWithFilters,accessToken)
+        val totalPages = ceil(found.toDouble() / per_page).toInt()
 
-        val responseParam = createResponse(baseUrl,accessToken)
-        System.err.println("Start search ApplyVacancies...")
-
-        responseParam?.get("per_page")?.let { items ->
-            perPage = items as Int
-        }
-        responseParam?.get("pages")?.let { items ->
-            totalPages = items as Int
-        }
+        System.err.println("Start search UnappliedVacancies. found: $found, totalPages: $totalPages")
 
         for (page in 0 ..totalPages){
             if(vacanciesList.size >= 200) break
-            val url = "$urlWithFilters&page=$page&per_page=$perPage"
-            System.err.println(url)
+            val url = "$urlWithFilters&page=$page&per_page=$per_page"
             val response = createResponse(url, accessToken)
-
             response?.get("items")?.let { items ->
                 (items as List<Map<*, *>>).forEach { item ->
-                    val vacancy = readItem(item)
+                    val vacancy = Vacancy().readItem(item)
                     if(correctVacancy(vacancy)) {
                         vacanciesList[vacancy.id] = vacancy
                     }
@@ -61,39 +47,25 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
         return vacanciesList
     }
 
-    private fun readItem(item: Map<*, *>) : Vacancy {
-        val id = item["id"] as? String ?: throw IllegalArgumentException("Id cannot be null")
-        val title = item["title"] as? String ?: "title is null"
-        val salary = item["salary"] as? String ?: "salary is null"
-        val responseLetterRequired = item["response_letter_required"] as? Boolean ?: false
-        val description = item["description"] as? String ?: "description is null"
-        val url = item["alternate_url"] as? String ?: throw IllegalArgumentException("URL cannot be null")
-        return Vacancy(id,title,salary,responseLetterRequired, description,url)
-    }
-
     private fun correctVacancy(vacancy: Vacancy): Boolean {
-        if(vacancy.responseLetterRequired) return false
         if(applyVacanciesList.contains(vacancy.id)) return false
+        if(vacancy.has_test) return false
+        if(vacancy.response_letter_required) return false
+        if(vacancy.relations.isNotEmpty()) return false
+        if(!vacancy.type.equals("open")) return false
+        if(vacancy.schedule.id != "remote") return false
         return true
     }
 
     private fun getAppliedVacancies(accessToken:String){
-        var totalPages = 1
-        var perPage = 20
         val baseUrl = "https://api.hh.ru/negotiations"
+        val found = getSizeResult(baseUrl,accessToken)
+        val totalPages = ceil(found.toDouble() / per_page).toInt()
 
-        val responseParam = createResponse(baseUrl,accessToken)
-        System.err.println("Start search ApplyVacancies...")
-
-        responseParam?.get("per_page")?.let { items ->
-            perPage = items as Int
-        }
-        responseParam?.get("pages")?.let { items ->
-            totalPages = items as Int
-        }
+        System.err.println("Start search ApplyVacancies. found: $found, totalPages: $totalPages")
 
         for (page in 0 ..totalPages) {
-            val url = "$baseUrl?page=$page&per_page=$perPage"
+            val url = "$baseUrl?page=$page&per_page=$per_page"
             println("page $page from $totalPages")
             val response = createResponse(url,accessToken)
             response?.get("items")?.let { items ->
@@ -125,4 +97,14 @@ class VacancyRepository(private val webClient: WebClient.Builder) {
         return response.block()
     }
 
+    private fun getSizeResult(url:String, accessToken:String): Int{
+        val responseParam = createResponse(url,accessToken)
+        var found = 0
+        responseParam?.get("found")?.let { items -> found = items as Int }
+        return found
+    }
+
 }
+
+
+

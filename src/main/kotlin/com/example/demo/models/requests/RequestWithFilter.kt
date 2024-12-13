@@ -12,8 +12,8 @@ class RequestWithFilter: Request()  {
     @JsonProperty("text")
     var text: String? = null
 
-    @JsonProperty("level")
-    var level: Experience? = null
+    @JsonProperty("experience")
+    var level: String? = null
 
     @JsonProperty("area")
     var area: Int?=null
@@ -25,8 +25,14 @@ class RequestWithFilter: Request()  {
         try {
             val tempResponse = objectMapper.readValue(json, RequestWithFilter::class.java)
             filter.text = tempResponse.text
-            filter.experienceLevel = tempResponse.level
             filter.area = tempResponse.area
+            tempResponse.level?.let { level ->
+                try {
+                    filter.experience = Experience.valueOf(level)
+                } catch (e: IllegalArgumentException) {
+                    throw RuntimeException("Invalid experience level: $level")
+                }
+            }
         } catch (e: Exception) {
             throw RuntimeException("Failed to parse JSON: ${e.message}")
         }

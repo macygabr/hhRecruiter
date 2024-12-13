@@ -9,7 +9,8 @@ import org.springframework.stereotype.Service
 
 @Service
 class FilterService (
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val filterRepository: FilterRepository
 ){
     fun setDefaultFilter(userId: Long): User {
         val user = userRepository.findById(userId).orElseThrow {
@@ -29,7 +30,7 @@ class FilterService (
 
     fun setFilter(userId: Long, filter: Filter){
         val user = setDefaultFilter(userId)
-
-        user.filter!!.copyFrom(filter)
+        val newFilter =filterRepository.findById(user.filter!!.id).get().copyFrom(filter)
+        filterRepository.save(newFilter)
     }
 }

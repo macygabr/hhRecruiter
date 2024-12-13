@@ -15,8 +15,12 @@ class Filter {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0
+
     var text: String? = null
-    var experienceLevel: Experience? = null
+
+    @Enumerated(EnumType.STRING)
+    var experience: Experience? = null
+
     var area: Int? = null
 
     @JsonIgnore
@@ -29,16 +33,16 @@ class Filter {
         val f = objectMapper.readValue(json, Filter::class.java)
         this.area = f.area
         this.text = f.text
-        this.experienceLevel = f.experienceLevel
+        this.experience = f.experience
     }
 
     fun toQueryString(): String {
         val params = mutableListOf<String>()
 
-        if(experienceLevel != null) params.add("experienceLevel=$experienceLevel")
+        if(experience != null) params.add("experience=$experience")
+        params.add("search_field=name")
         if(text != null) params.add("text=$text")
         if(area != null) params.add("area=$area")
-
         return if (params.isNotEmpty()) {
             params.joinToString("&")
         } else {
@@ -46,13 +50,14 @@ class Filter {
         }
     }
 
-    fun copyFrom(other: Filter) {
+    fun copyFrom(other: Filter): Filter {
         this.text = other.text
-        this.experienceLevel = other.experienceLevel
+        this.experience = other.experience
         this.area = other.area
+        return this
     }
 
     override fun toString(): String {
-        return "Filter(experienceLevel=$experienceLevel, text=$text, area=$area)"
+        return "Filter(experience=$experience, text=$text, area=$area)"
     }
 }
