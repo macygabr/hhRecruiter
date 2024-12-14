@@ -13,7 +13,10 @@ class UserService (
         val user = userRepository.findById(userId).orElseThrow {
             throw NotFoundException("User not found")
         }!!
-        println(user)
         return user
+    }
+
+    fun save(user: User) : User {
+        return userRepository.save(user)
     }
 }

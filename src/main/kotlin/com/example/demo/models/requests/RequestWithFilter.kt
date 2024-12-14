@@ -2,6 +2,7 @@ package com.example.demo.models.requests
 
 import com.example.demo.models.user.Experience
 import com.example.demo.models.user.Filter
+import com.example.demo.models.user.Schedule
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -18,6 +19,9 @@ class RequestWithFilter: Request()  {
     @JsonProperty("area")
     var area: Int?=null
 
+    @JsonProperty("schedule")
+    var schedule: String?=null
+
     val filter: Filter = Filter()
 
     override fun readJson(json: String): Request {
@@ -31,6 +35,14 @@ class RequestWithFilter: Request()  {
                     filter.experience = Experience.valueOf(level)
                 } catch (e: IllegalArgumentException) {
                     throw RuntimeException("Invalid experience level: $level")
+                }
+            }
+
+            tempResponse.schedule?.let { schedule ->
+                try {
+                    filter.schedule = Schedule.valueOf(schedule)
+                } catch (e: IllegalArgumentException) {
+                    throw RuntimeException("Invalid schedule: $schedule")
                 }
             }
         } catch (e: Exception) {

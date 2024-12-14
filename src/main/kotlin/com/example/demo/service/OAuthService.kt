@@ -1,15 +1,8 @@
 package com.example.demo.service
 
-import com.example.demo.models.*
-import com.example.demo.models.exceptions.NotFoundException
-import com.example.demo.models.requests.Request
-import com.example.demo.models.requests.RequestWithCode
 import com.example.demo.models.user.HhAuthInfo
-import com.example.demo.repository.HhAuthInfoRepository
-import com.example.demo.repository.UserRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.BodyInserters
@@ -18,13 +11,10 @@ import reactor.core.publisher.Mono
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
 
 @Service
 class OAuthService (
-    private val hhAuthInfoRepository: HhAuthInfoRepository,
-    private val userRepository: UserRepository,
-    private val webClient: WebClient.Builder
+    private val userService: UserService
 ){
 
     @Value("\${refreshtoken.url}")
@@ -51,10 +41,7 @@ class OAuthService (
     }
 
     fun registry(userId: Long, code: String) {
-        val user = userRepository.findById(userId).orElseThrow {
-            throw NotFoundException("User not found")
-        }!!
-
+        val user = userService.profile(userId)
         val tokenResponse = getAccessToken(clientId, clientSecret, code, redirectUri)
 
         if(user.hhAuthInfo == null){
@@ -69,13 +56,11 @@ class OAuthService (
             user.hhAuthInfo!!.refresh_token = tokenResponse.refreshToken
             user.hhAuthInfo!!.expiresIn = tokenResponse.expiresIn
         }
-        userRepository.save(user)
+        userService.save(user)
     }
 
 
     fun refreshAccessToken(userId: Long) {
-        println("Запуск обновения токена...")
-
 //        val HhAuthInfo = hhAuthInfoRepository.findByToken(request.authorizationHeader)?:throw HttpException(HttpStatus.UNAUTHORIZED, "token invalid")
 //        val refreshToken = HhAuthInfo.refresh_token
 //        scheduledTask = HhAuthInfo.expiresIn?.let { expiresIn ->
@@ -113,7 +98,7 @@ class OAuthService (
     }
 
 
-    fun stopRefreshAccessToken(request: Request){
+    fun stopRefreshAccessToken(userId: Long){
         scheduledTask?.cancel(true)
         scheduledTask = null
     }

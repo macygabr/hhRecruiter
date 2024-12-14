@@ -19,4 +19,8 @@ class Resume (
         @OneToOne
         @JoinColumn(name = "user_id")
         var user: User? = null
-)
+){
+        override fun toString(): String {
+                return "Resume(id=$id, title='$title')"
+        }
+}

@@ -32,6 +32,8 @@ class User {
     @Column(name = "role", nullable = false)
     private var role: Role? = null
 
+    var monitoring:Boolean = false
+
     @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL])
     var filter: Filter? = null
 

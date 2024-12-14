@@ -7,23 +7,26 @@ import com.example.demo.service.kafka.KafkaProducerService
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.kafka.annotation.KafkaListener
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.stereotype.Controller
 
-@RestController
+@Controller
 class FilterController(
     private val filterService: FilterService,
     private val kafkaProducer: KafkaProducerService
 ) {
 
     private val objectMapper = ObjectMapper()
+    private val logger: Logger = LoggerFactory.getLogger(FilterController::class.java)
 
     @KafkaListener(topics = ["filter"], containerFactory = "kafkaListenerAuthService")
     fun setFilter(message: ConsumerRecord<String, String>) {
         val response = Response()
-        System.err.println(message.value())
         try {
+            logger.debug("Получен запрос на установку фильтра: ${message.value()}")
             val jsonNode: JsonNode = objectMapper.readTree(message.value())
             val userId = jsonNode["userId"]?.asLong() ?: throw IllegalArgumentException("Поле 'userId' отсутствует в сообщении")
 
@@ -33,11 +36,12 @@ class FilterController(
             response.status = HttpStatus.OK
             response.message = "filter " + request.filter
         } catch (e:Exception){
-            System.err.println(e.message)
+            logger.error(e.message)
             response.status = HttpStatus.BAD_REQUEST
             response.message = e.message.toString()
         } finally {
             kafkaProducer.sendMessage("response", message.key(), response.toString())
+            logger.debug("Отправлен ответ: $response")
         }
     }
 }

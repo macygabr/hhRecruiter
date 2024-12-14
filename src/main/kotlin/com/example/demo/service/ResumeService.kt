@@ -12,20 +12,19 @@ import org.springframework.web.reactive.function.client.WebClient
 
 @Service
 class ResumeService(
-    private val userRepository: UserRepository
+    private val userService: UserService
 ) {
-    fun setDefault(userId: Long){
+    fun setDefault(userId: Long) :Resume{
         println("Поиск пользователя...")
-        val user = userRepository.findById(userId).orElseThrow {
-            throw NotFoundException("User not found")
-        }!!
+        val user = userService.profile(userId)
 
         if(user.hhAuthInfo == null) throw AuthenticationException("User not authenticated in HH")
         val resume = getFirstResume(user.hhAuthInfo?.access_token!!)
         resume.user = user
         user.resume = resume
         println("Сохранение резюме...")
-        userRepository.save(user)
+        userService.save(user)
+        return resume
     }
 
     private fun getResumesFromHH(accessToken: String): HashMap<String, Resume> {

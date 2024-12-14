@@ -47,6 +47,9 @@ dependencies {
 	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 	implementation("org.springframework.boot:spring-boot-starter-logging")
 
+//	Telegram
+	implementation("dev.inmo:tgbotapi.core-jvm:22.0.0")
+
 //	Other
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")

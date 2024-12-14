@@ -23,6 +23,9 @@ class Filter {
 
     var area: Int? = null
 
+    @Enumerated(EnumType.STRING)
+    var schedule: Schedule? = null
+
     @JsonIgnore
     @OneToOne
     @JoinColumn(name = "user_id")
@@ -42,7 +45,8 @@ class Filter {
         if(experience != null) params.add("experience=$experience")
         params.add("search_field=name")
         if(text != null) params.add("text=$text")
-        if(area != null) params.add("area=$area")
+        if(area != null && area!= 0) params.add("area=$area")
+        if(schedule != null) params.add("schedule=$schedule")
         return if (params.isNotEmpty()) {
             params.joinToString("&")
         } else {
@@ -54,10 +58,11 @@ class Filter {
         this.text = other.text
         this.experience = other.experience
         this.area = other.area
+        this.schedule = other.schedule
         return this
     }
 
     override fun toString(): String {
-        return "Filter(experience=$experience, text=$text, area=$area)"
+        return "Filter(id=$id, text=$text, experience=$experience, area=$area, schedule=$schedule)"
     }
 }
