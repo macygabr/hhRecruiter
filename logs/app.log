@@ -10777,3 +10777,4 @@ You may wish to exclude one of them to ensure predictable runtime behavior
 2024-12-15 14:55:10 INFO  o.apache.kafka.clients.NetworkClient - [Consumer clientId=consumer-auth_service-4, groupId=auth_service] Node -1 disconnected.
 2024-12-15 14:55:24 DEBUG c.e.demo.controller.OAuthController - Получен запрос на получение ссылки для авторизации: {"userId":9}
 2024-12-15 14:55:24 DEBUG c.e.demo.controller.OAuthController - Отправлен ответ после запроса ссылки: {"status":"OK","message":"https://hh.ru/oauth/authorize?response_type=code&client_id=UHPUD43K37N4JMEN2L63B1AD41OP0IJVQT8DFB4A73UNOQ1CBUT0M04ICN7F45VN&redirect_uri=https://macygabr.github.io/hh/callback"}
+2024-12-15 15:00:47 INFO  o.apache.kafka.clients.NetworkClient - [Producer clientId=producer-1] Node -1 disconnected.

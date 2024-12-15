@@ -9,7 +9,7 @@ COPY gradle /app/gradle
 
 # 4. Копируем исходный код проекта
 COPY src /app/src/
-COPY settings.gradle /app/settings.gradle  # Если есть
+COPY settings.gradle.kts /app/settings.gradle.kts
 
 # 5. Даем права на выполнение скрипту gradlew
 RUN chmod +x gradlew
