@@ -4,32 +4,29 @@ FROM openjdk:17-jdk-slim AS build
 # 2. Устанавливаем рабочую директорию
 WORKDIR /app
 
-# 3. Копируем build.gradle и другие необходимые файлы (например, settings.gradle, если есть)
-COPY build.gradle /app/
-COPY settings.gradle /app/  # если есть
-COPY gradle /app/gradle  # если используется Gradle wrapper
+# 3. Копируем gradle wrapper и настройки
+COPY gradle /app/gradle
 
-# 4. Копируем исходный код в контейнер
+# 4. Копируем исходный код проекта
 COPY src /app/src/
+COPY settings.gradle /app/settings.gradle  # Если есть
 
-# 5. Устанавливаем Gradle и собираем проект
-RUN apt-get update && apt-get install -y wget && \
-    wget https://services.gradle.org/distributions/gradle-7.5-bin.zip -P /tmp && \
-    unzip /tmp/gradle-7.5-bin.zip -d /opt && \
-    ln -s /opt/gradle-7.5/bin/gradle /usr/bin/gradle && \
-    gradle build -x test  # Собираем проект, пропуская тесты
+# 5. Даем права на выполнение скрипту gradlew
+RUN chmod +x gradlew
 
-# 6. Запускаем финальный контейнер
+# 6. Собираем проект с помощью Gradle Wrapper
+RUN ./gradlew build -x test  # Пропускаем тесты для ускорения сборки
+
+# 7. Запускаем финальный контейнер
 FROM openjdk:17-jdk-slim
 
-# 7. Устанавливаем рабочую директорию для финального контейнера
 WORKDIR /app
 
-# 8. Копируем JAR файл из первого слоя
+# Копируем скомпилированный .jar файл из первого этапа
 COPY --from=build /app/build/libs/hhRecruiter-0.0.1.jar /app/hhRecruiter-0.0.1.jar
 
-# 9. Открываем порт для приложения
+# Открываем порт для приложения
 EXPOSE 8080
 
-# 10. Устанавливаем точку входа для запуска приложения
+# Точка входа для запуска приложения
 ENTRYPOINT ["java", "-jar", "hhRecruiter-0.0.1.jar"]
