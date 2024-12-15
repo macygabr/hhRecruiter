@@ -14,6 +14,7 @@ COPY settings.gradle.kts /app/settings.gradle.kts
 
 # 5. Даем права на выполнение скрипту gradlew
 RUN chmod +x gradlew
+RUN chmod +x /app/gradlew
 
 # 6. Собираем проект с помощью Gradle Wrapper
 RUN ./gradlew build -x test  # Пропускаем тесты для ускорения сборки
