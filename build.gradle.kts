@@ -48,7 +48,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-logging")
 
 //	Telegram
-	implementation("dev.inmo:tgbotapi.core-jvm:22.0.0")
+	implementation("org.telegram:telegrambots:6.9.7.1")
 
 //	Other
 	compileOnly("org.projectlombok:lombok")
@@ -56,6 +56,7 @@ dependencies {
 	implementation("org.springframework.kafka:spring-kafka")
 	implementation("org.springframework.boot:spring-boot-starter-aop")
 	implementation("org.json:json:20240303")
+	implementation("javax.xml.bind:jaxb-api:2.3.1")
 }
 
 dependencyManagement {

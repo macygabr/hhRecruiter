@@ -2,7 +2,6 @@ package com.example.demo.service
 
 import com.example.demo.controller.FilterController
 import com.example.demo.models.exceptions.AuthenticationException
-import com.example.demo.repository.VacancyRepository
 import org.json.JSONObject
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -19,7 +18,7 @@ import java.util.concurrent.TimeUnit
 class MonitoringService (
     private val userService: UserService,
     private val webClient: WebClient.Builder,
-    private val repository: VacancyRepository
+    private val repository: VacancyService
 ) {
     @Value("\${content.type}")
     private val contentType: String = ""

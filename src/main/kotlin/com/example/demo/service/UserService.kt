@@ -19,4 +19,8 @@ class UserService (
     fun save(user: User) : User {
         return userRepository.save(user)
     }
+
+    fun getAll() : MutableList<User?> {
+        return userRepository.findAll()
+    }
 }
