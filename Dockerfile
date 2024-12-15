@@ -5,6 +5,7 @@ FROM openjdk:17-jdk-slim AS build
 WORKDIR /app
 
 # 3. Копируем gradle wrapper и настройки
+COPY gradlew /app/gradlew
 COPY gradle /app/gradle
 
 # 4. Копируем исходный код проекта
