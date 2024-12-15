@@ -16,10 +16,13 @@ COPY settings.gradle.kts /app/settings.gradle.kts
 RUN chmod +x gradlew
 RUN chmod +x /app/gradlew
 
-# 6. Собираем проект с помощью Gradle Wrapper
-RUN ./gradlew build -x test  # Пропускаем тесты для ускорения сборки
+# 6. Устанавливаем необходимые зависимости
+RUN apt-get update && apt-get install -y curl git
 
-# 7. Запускаем финальный контейнер
+# 7. Собираем проект с помощью Gradle Wrapper
+RUN ./gradlew build -x test --stacktrace
+
+# 8. Запускаем финальный контейнер
 FROM openjdk:17-jdk-slim
 
 WORKDIR /app
